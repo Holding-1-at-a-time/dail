@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Auto Detailing Service Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: '#00AE98',
+              secondary: '#707070',
+              'gray-900': '#121212', // Darker background
+              'gray-800': '#1E1E1E',
+              'gray-700': '#2C2C2C',
+              'gray-600': '#3E3E3E',
+              'gray-500': '#5A5A5A',
+              'gray-400': '#9E9E9E',
+              'gray-300': '#CCCCCC',
+              'gray-200': '#E0E0E0',
+              'gray-100': '#F5F5F5',
+              'blue-600': '#3182ce',
+              'blue-500': '#4299e1',
+            },
+            boxShadow: {
+              'neon-primary': '0 0 5px theme(colors.primary), 0 0 10px theme(colors.primary)',
+            }
+          }
+        }
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^18.2.0/",
+    "react/": "https://esm.sh/react@^18.2.0/",
+    "react": "https://esm.sh/react@^18.2.0",
+    "@google/genai": "https://esm.sh/@google/genai",
+    "@clerk/clerk-react": "https://esm.sh/@clerk/clerk-react@5",
+    "convex/react": "https://esm.sh/convex@1.11.2/react",
+    "convex/react-clerk": "https://esm.sh/convex@1.11.2/react-clerk",
+    "jspdf": "https://esm.sh/jspdf@2.5.1",
+    "chart.js": "https://esm.sh/chart.js@4.4.3",
+    "react-chartjs-2": "https://esm.sh/react-chartjs-2@5.2.0",
+    "@stripe/react-connect-js": "https://esm.sh/@stripe/react-connect-js@1.0.0?deps=react@18.2.0",
+    "nanoid": "https://esm.sh/nanoid@^5.1.5",
+    "convex/": "https://esm.sh/convex@^1.25.4/",
+    "svix": "https://esm.sh/svix@^1.73.0",
+    "@clerk/clerk-sdk-node": "https://esm.sh/@clerk/clerk-sdk-node@^5.1.6",
+    "@ai-sdk/openai": "https://esm.sh/@ai-sdk/openai",
+    "@convex-dev/rag": "https://esm.sh/@convex-dev/rag",
+    "convex-helpers/": "https://esm.sh/convex-helpers@0.1.325/",
+    "convex-helpers": "https://esm.sh/convex-helpers@^0.1.104",
+    "@convex-dev/rag/": "https://esm.sh/@convex-dev/rag@^0.5.2/",
+    "@clerk/backend": "https://esm.sh/@clerk/backend@^2.9.2",
+    "@convex-dev/action-cache": "https://esm.sh/@convex-dev/action-cache@^0.2.1",
+    "@convex-dev/action-cache/": "https://esm.sh/@convex-dev/action-cache@^0.2.1/",
+    "@convex-dev/aggregate": "https://esm.sh/@convex-dev/aggregate@^0.3.1",
+    "@convex-dev/aggregate/": "https://esm.sh/@convex-dev/aggregate@^0.3.1/",
+    "@convex-dev/agent": "https://esm.sh/@convex-dev/agent@^0.2.1",
+    "zod": "https://esm.sh/zod@3.23.8",
+    "@convex-dev/agent/": "https://esm.sh/@convex-dev/agent@^0.2.1/",
+    "@convex-dev/rate-limiter/": "https://esm.sh/@convex-dev/rate-limiter@^0.1.7/",
+    "@convex-dev/rate-limiter/react": "https://esm.sh/@convex-dev/rate-limiter@^0.1.7/react",
+    "@convex-dev/rate-limiter": "https://esm.sh/@convex-dev/rate-limiter@^0.2.12",
+    "@convex-dev/workflow": "https://esm.sh/@convex-dev/workflow@^0.1.12",
+    "@convex-dev/workflow/": "https://esm.sh/@convex-dev/workflow@^0.1.12/",
+    "@convex-dev/action-retrier": "https://esm.sh/@convex-dev/action-retrier@^0.2.1",
+    "@convex-dev/workpool": "https://esm.sh/@convex-dev/workpool@^0.1.7",
+    "@convex-dev/workpool/": "https://esm.sh/@convex-dev/workpool@^0.1.7/",
+    "html5-qrcode": "https://esm.sh/html5-qrcode@2.3.8"
+  }
+}
+</script>
+</head>
+  <body class="bg-gray-900 text-gray-100">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

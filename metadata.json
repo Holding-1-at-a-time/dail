@@ -1,0 +1,7 @@
+{
+  "name": "Copy of Copy of Auto Detailing Service Manager",
+  "description": "An admin portal for managing auto detailing services and packages, inspired by the Mobile Tech RX blueprint. Allows for creating, editing, and organizing services.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
