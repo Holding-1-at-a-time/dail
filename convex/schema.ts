@@ -11,7 +11,8 @@ export default defineSchema({
 
   company: defineTable({
     name: v.string(),
-    logoUrl: v.optional(v.string()),
+    logoStorageId: v.optional(v.id('_storage')),
+    brandColor: v.optional(v.string()),
     defaultLaborRate: v.number(),
     stripeConnectAccountId: v.optional(v.string()),
     enableSmartInventory: v.optional(v.boolean()),

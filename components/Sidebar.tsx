@@ -1,4 +1,6 @@
 import React from 'react';
+import { useQuery } from 'convex/react';
+import { api } from '../convex/_generated/api';
 import { Page, User } from '../types';
 import { HomeIcon, BriefcaseIcon, CogIcon, CalendarIcon, ChartBarIcon, CubeIcon, MegaphoneIcon, BookOpenIcon, SparklesIcon } from './icons';
 
@@ -21,7 +23,7 @@ const NavLink: React.FC<{
             onClick={() => setActivePage(page)}
             className={`flex items-center w-full px-4 py-3 text-left transition-colors duration-200 rounded-lg ${
                 isActive
-                ? 'bg-blue-600 text-white'
+                ? 'bg-primary text-white'
                 : 'text-gray-400 hover:bg-gray-700 hover:text-white'
             }`}
         >
@@ -31,15 +33,28 @@ const NavLink: React.FC<{
     );
 };
 
+const SidebarHeader = () => {
+    const company = useQuery(api.company.get);
+    const logoUrl = useQuery(api.files.getUrl, company?.logoStorageId ? { storageId: company.logoStorageId } : "skip");
+
+    return (
+        <div className="flex items-center justify-center h-20 border-b border-gray-700 px-4">
+            {logoUrl ? (
+                <img src={logoUrl} alt={`${company?.name} Logo`} className="max-h-12 object-contain" />
+            ) : (
+                <h1 className="text-2xl font-bold text-white truncate">{company?.name || "Detailing Pro"}</h1>
+            )}
+        </div>
+    );
+};
+
 
 const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, currentUser }) => {
   const isAdmin = currentUser?.role === 'admin';
 
   return (
     <div className="flex flex-col w-64 bg-gray-800 border-r border-gray-700">
-      <div className="flex items-center justify-center h-20 border-b border-gray-700">
-        <h1 className="text-2xl font-bold text-white">Detailing Pro</h1>
-      </div>
+      <SidebarHeader />
       <nav className="flex-1 px-4 py-4 space-y-2">
         <NavLink 
             page="dashboard"

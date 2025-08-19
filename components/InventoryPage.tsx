@@ -7,6 +7,7 @@ import ProductFormModal from './ProductFormModal';
 import { Id } from '../convex/_generated/dataModel';
 import ReceiveStockModal from './ReceiveStockModal';
 import InventoryLogModal from './InventoryLogModal';
+import EmptyState from './EmptyState';
 
 const InventoryPage: React.FC = () => {
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -69,18 +70,26 @@ const InventoryPage: React.FC = () => {
                 <div><h1 className="text-3xl font-bold text-white">Inventory Management</h1><p className="text-gray-400 mt-1">Track product stock levels and manage suppliers.</p></div>
                 <div className="flex space-x-2">
                     <button onClick={() => setIsReceiveStockModalOpen(true)} className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg shadow-md"><ArchiveBoxArrowDownIcon className="w-5 h-5 mr-2" />Receive Stock</button>
-                    <button onClick={() => { setProductToEdit(null); setIsProductModalOpen(true); }} className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md"><PlusIcon className="w-5 h-5 mr-2" />Add Product</button>
+                    <button onClick={() => { setProductToEdit(null); setIsProductModalOpen(true); }} className="flex items-center bg-primary hover:opacity-90 text-white font-bold py-2 px-4 rounded-lg shadow-md"><PlusIcon className="w-5 h-5 mr-2" />Add Product</button>
                 </div>
             </header>
 
             <div className="bg-gray-800 rounded-lg shadow-lg p-4 mb-6"><div className="relative"><input type="text" placeholder="Search products..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 pl-10 text-white"/><SearchIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" /></div></div>
 
             <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-                <table className="min-w-full">
-                    <thead className="bg-gray-700"><tr><th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Product</th><th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Category</th><th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Supplier</th><th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Stock / Reorder</th><th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Forecast</th><th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Status</th><th className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase">Actions</th></tr></thead>
-                    <tbody className="divide-y divide-gray-700">{filteredProducts.map(product => { const status = getStatus(product); return (<tr key={product._id} className="hover:bg-gray-700/50"><td className="px-6 py-4 text-sm font-medium text-white">{product.name}</td><td className="px-6 py-4 text-sm text-gray-300">{product.category}</td><td className="px-6 py-4 text-sm text-gray-300">{supplierMap.get(product.supplierId) || 'N/A'}</td><td className="px-6 py-4 text-sm text-gray-300 font-mono">{product.stockLevel} / {product.reorderPoint}</td><td className="px-6 py-4 text-sm">{getForecast(product)}</td><td className="px-6 py-4 text-sm"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${status.color}`}>{status.text}</span></td><td className="px-6 py-4 text-right text-sm font-medium"><button onClick={() => { setProductForLog(product); setIsLogModalOpen(true);}} className="p-2 text-gray-400 hover:text-green-400"><DocumentTextIcon className="w-5 h-5" /></button><button onClick={() => { setProductToEdit(product); setIsProductModalOpen(true); }} className="p-2 text-gray-400 hover:text-blue-400"><EditIcon className="w-5 h-5" /></button><button onClick={() => handleDelete(product._id)} className="p-2 text-gray-400 hover:text-red-500"><TrashIcon className="w-5 h-5" /></button></td></tr>);})}</tbody>
-                </table>
-                 {filteredProducts.length === 0 && (<div className="text-center py-16"><CubeIcon className="w-12 h-12 mx-auto text-gray-600" /><h3 className="text-xl text-gray-400 mt-4">No products found.</h3><p className="text-gray-500 mt-2">Try adjusting your search or add a new product.</p></div>)}
+                 {filteredProducts.length > 0 ? (
+                    <table className="min-w-full">
+                        <thead className="bg-gray-700"><tr><th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Product</th><th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Category</th><th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Supplier</th><th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Stock / Reorder</th><th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Forecast</th><th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Status</th><th className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase">Actions</th></tr></thead>
+                        <tbody className="divide-y divide-gray-700">{filteredProducts.map(product => { const status = getStatus(product); return (<tr key={product._id} className="hover:bg-gray-700/50"><td className="px-6 py-4 text-sm font-medium text-white">{product.name}</td><td className="px-6 py-4 text-sm text-gray-300">{product.category}</td><td className="px-6 py-4 text-sm text-gray-300">{supplierMap.get(product.supplierId) || 'N/A'}</td><td className="px-6 py-4 text-sm text-gray-300 font-mono">{product.stockLevel} / {product.reorderPoint}</td><td className="px-6 py-4 text-sm">{getForecast(product)}</td><td className="px-6 py-4 text-sm"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${status.color}`}>{status.text}</span></td><td className="px-6 py-4 text-right text-sm font-medium"><button onClick={() => { setProductForLog(product); setIsLogModalOpen(true);}} className="p-2 text-gray-400 hover:text-green-400"><DocumentTextIcon className="w-5 h-5" /></button><button onClick={() => { setProductToEdit(product); setIsProductModalOpen(true); }} className="p-2 text-gray-400 hover:text-blue-400"><EditIcon className="w-5 h-5" /></button><button onClick={() => handleDelete(product._id)} className="p-2 text-gray-400 hover:text-red-500"><TrashIcon className="w-5 h-5" /></button></td></tr>);})}</tbody>
+                    </table>
+                 ) : (
+                    <EmptyState
+                      icon={<CubeIcon className="w-12 h-12 text-gray-600" />}
+                      title={searchTerm ? "No Products Found" : "Your Inventory is Empty"}
+                      message={searchTerm ? "Try adjusting your search terms." : "Add your first product to start tracking stock."}
+                      action={!searchTerm ? { label: "Add Product", onClick: () => { setProductToEdit(null); setIsProductModalOpen(true); } } : undefined}
+                    />
+                )}
             </div>
             <ProductFormModal isOpen={isProductModalOpen} onClose={handleCloseModals} productToEdit={productToEdit} suppliers={suppliers} />
             <ReceiveStockModal isOpen={isReceiveStockModalOpen} onClose={handleCloseModals} products={products} />

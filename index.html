@@ -6,12 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Auto Detailing Service Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style id="dynamic-branding-styles">
+      :root {
+        --primary-color: #00AE98;
+      }
+    </style>
     <script>
       tailwind.config = {
         theme: {
           extend: {
             colors: {
-              primary: '#00AE98',
+              primary: 'var(--primary-color)',
               secondary: '#707070',
               'gray-900': '#121212', // Darker background
               'gray-800': '#1E1E1E',
@@ -26,7 +31,7 @@
               'blue-500': '#4299e1',
             },
             boxShadow: {
-              'neon-primary': '0 0 5px theme(colors.primary), 0 0 10px theme(colors.primary)',
+              'neon-primary': '0 0 5px var(--primary-color), 0 0 10px var(--primary-color)',
             }
           }
         }
@@ -58,14 +63,14 @@
     "@clerk/backend": "https://esm.sh/@clerk/backend@^2.9.2",
     "@convex-dev/action-cache": "https://esm.sh/@convex-dev/action-cache@^0.2.1",
     "@convex-dev/action-cache/": "https://esm.sh/@convex-dev/action-cache@^0.2.1/",
-    "@convex-dev/aggregate": "https://esm.sh/@convex-dev/aggregate@^0.3.1",
+    "@convex-dev/aggregate": "https://esm.sh//@convex-dev/aggregate@^0.3.1",
     "@convex-dev/aggregate/": "https://esm.sh/@convex-dev/aggregate@^0.3.1/",
     "@convex-dev/agent": "https://esm.sh/@convex-dev/agent@^0.2.1",
     "zod": "https://esm.sh/zod@3.23.8",
     "@convex-dev/agent/": "https://esm.sh/@convex-dev/agent@^0.2.1/",
+    "@convex-dev/rate-limiter": "https://esm.sh/@convex-dev/rate-limiter@^0.2.12",
     "@convex-dev/rate-limiter/": "https://esm.sh/@convex-dev/rate-limiter@^0.1.7/",
     "@convex-dev/rate-limiter/react": "https://esm.sh/@convex-dev/rate-limiter@^0.1.7/react",
-    "@convex-dev/rate-limiter": "https://esm.sh/@convex-dev/rate-limiter@^0.2.12",
     "@convex-dev/workflow": "https://esm.sh/@convex-dev/workflow@^0.1.12",
     "@convex-dev/workflow/": "https://esm.sh/@convex-dev/workflow@^0.1.12/",
     "@convex-dev/action-retrier": "https://esm.sh/@convex-dev/action-retrier@^0.2.1",
