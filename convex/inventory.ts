@@ -88,6 +88,14 @@ export const deleteProduct = mutation({
         
         await ctx.db.delete(id);
         await productStockStatusAggregate.delete(ctx, oldDoc);
+
+        await ctx.runMutation(internal.auditLog.record, {
+            action: "delete_product",
+            details: {
+                targetId: id,
+                targetName: oldDoc.name,
+            }
+        });
     }
 });
 

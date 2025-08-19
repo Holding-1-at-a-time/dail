@@ -3,29 +3,49 @@ import { useQuery } from 'convex/react';
 import { api } from '../convex/_generated/api';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { ClipboardListIcon, SearchIcon, DocumentDownloadIcon } from './icons';
+import { ClipboardListIcon, SearchIcon, DocumentDownloadIcon, ChartBarIcon, DocumentMagnifyingGlassIcon } from './icons';
 import { exportToCsv } from '../utils/csv';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 const toInputDateString = (date: Date) => date.toISOString().split('T')[0];
+type ReportTab = 'performance' | 'history' | 'audit';
 
-const ReportsPage: React.FC = () => {
+const TabButton: React.FC<{
+  tab: ReportTab;
+  activeTab: ReportTab;
+  setActiveTab: (tab: ReportTab) => void;
+  children: React.ReactNode;
+  icon: React.ReactNode;
+}> = ({ tab, activeTab, setActiveTab, children, icon }) => (
+    <button
+        onClick={() => setActiveTab(tab)}
+        className={`flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
+            activeTab === tab 
+            ? 'bg-blue-600 text-white' 
+            : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+        }`}
+    >
+        {icon}
+        <span>{children}</span>
+    </button>
+);
+
+
+const PerformanceTab = () => {
     const [filters, setFilters] = useState({
         startDate: toInputDateString(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)),
         endDate: toInputDateString(new Date()),
         technicianId: 'all',
     });
-    const [vehicleSearch, setVehicleSearch] = useState('');
 
     const reportsData = useQuery(api.reports.getReportsData, { 
         startDate: new Date(filters.startDate).getTime(),
         endDate: new Date(`${filters.endDate}T23:59:59.999Z`).getTime(),
         technicianId: filters.technicianId,
     });
-    const vehicleHistory = useQuery(api.reports.getVehicleHistory, vehicleSearch ? { query: vehicleSearch } : "skip");
-
-    const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    
+     const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
@@ -79,13 +99,10 @@ const ReportsPage: React.FC = () => {
     }, [reportsData]);
 
     const chartOptions = { responsive: true, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#9CA3AF' } }, x: { ticks: { color: '#9CA3AF' } } } };
-
-    if (!reportsData) return <div className="p-8 text-center">Loading reports...</div>;
-
+    if (!reportsData) return <div className="p-8 text-center">Loading performance data...</div>;
+    
     return (
-        <div className="container mx-auto p-4 md:p-8">
-            <header className="mb-8"><h1 className="text-3xl font-bold text-white">Reports & Analytics</h1><p className="text-gray-400 mt-1">Key insights into your business performance.</p></header>
-
+        <>
             <section className="mb-12 bg-gray-800 rounded-lg shadow-lg p-6">
                 <h2 className="text-xl font-bold text-white mb-4">Filters</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -100,9 +117,7 @@ const ReportsPage: React.FC = () => {
                     <button onClick={() => setDateRange('year')} className="text-xs px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-full">This Year</button>
                 </div>
             </section>
-
             <section className="mb-12 bg-gray-800 rounded-lg shadow-lg p-6"><h2 className="text-xl font-bold text-white mb-4">Revenue Over Time</h2><Line options={chartOptions} data={revenueData} /></section>
-
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
                 <section>
                     <div className="flex justify-between items-center mb-4">
@@ -119,22 +134,94 @@ const ReportsPage: React.FC = () => {
                     <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden"><table className="min-w-full"><thead className="bg-gray-700"><tr><th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Technician</th><th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase">Jobs</th><th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase">Revenue</th><th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase">Avg Value</th></tr></thead><tbody className="divide-y divide-gray-700">{reportsData.technicianLeaderboard.map(({ technician, completedJobs, revenue, averageJobValue }) => (<tr key={technician._id} className="hover:bg-gray-700/50"><td className="px-4 py-4 text-sm font-medium text-white">{technician.name}</td><td className="px-4 py-4 text-sm text-gray-300 text-right">{completedJobs}</td><td className="px-4 py-4 text-sm text-blue-400 text-right font-semibold">${revenue.toFixed(2)}</td><td className="px-4 py-4 text-sm text-gray-300 text-right">${averageJobValue.toFixed(2)}</td></tr>))}</tbody></table></div>
                 </section>
             </div>
+        </>
+    );
+};
+
+const VehicleHistoryTab = () => {
+    const [vehicleSearch, setVehicleSearch] = useState('');
+    const vehicleHistory = useQuery(api.reports.getVehicleHistory, vehicleSearch ? { query: vehicleSearch } : "skip");
+
+    return (
+        <section>
+             <div className="bg-gray-800 rounded-lg shadow-lg p-6">
+                <div className="relative mb-4"><input type="text" placeholder="Search by VIN, make, model, or customer name..." value={vehicleSearch} onChange={e => setVehicleSearch(e.target.value)} className="w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 pl-10 text-white"/><SearchIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"/></div>
+                {vehicleSearch.trim() ? (
+                    vehicleHistory ? (
+                        <div>
+                            <h3 className="text-lg font-bold text-white">{`${vehicleHistory.vehicle.year} ${vehicleHistory.vehicle.make} ${vehicleHistory.vehicle.model}`}</h3>
+                            <p className="text-sm text-gray-400">Owner: {vehicleHistory.customerName}</p>
+                            <div className="mt-4 border-t border-gray-700 pt-4"><table className="min-w-full"><thead className="bg-gray-700/50"><tr><th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Date</th><th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Services</th><th className="px-4 py-2 text-right text-xs font-medium text-gray-300 uppercase">Total</th></tr></thead><tbody className="divide-y divide-gray-700">{vehicleHistory.jobs.map(job => (<tr key={job._id}><td className="px-4 py-3 text-sm">{new Date(job.estimateDate).toLocaleDateString()}</td><td className="px-4 py-3 text-sm">{job.serviceNames.join(', ')}</td><td className="px-4 py-3 text-right text-sm font-semibold text-blue-400">${job.totalAmount.toFixed(2)}</td></tr>))}</tbody></table></div>
+                        </div>
+                    ) : ( <p className="text-center text-gray-500 py-4">No vehicle found matching your search.</p> )
+                ) : ( <p className="text-center text-gray-500 py-4">Enter a search term to find a vehicle's history.</p> )}
+             </div>
+        </section>
+    );
+};
+
+const AuditLogTab = () => {
+    const [auditSearch, setAuditSearch] = useState('');
+    const logs = useQuery(api.auditLog.getLogs, { search: auditSearch || undefined });
+
+    return (
+        <section>
+            <div className="relative mb-4">
+                <input type="text" placeholder="Search logs by user, action, or target..." value={auditSearch} onChange={e => setAuditSearch(e.target.value)} className="w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 pl-10 text-white"/>
+                <SearchIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"/>
+            </div>
+            <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden max-h-[60vh] overflow-y-auto">
+                <table className="min-w-full">
+                    <thead className="bg-gray-700 sticky top-0">
+                        <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Timestamp</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">User</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Action</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Details</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                        {logs?.map(log => (
+                            <tr key={log._id} className="hover:bg-gray-700/50">
+                                <td className="px-4 py-2 text-sm text-gray-400 whitespace-nowrap">{new Date(log.timestamp).toLocaleString()}</td>
+                                <td className="px-4 py-2 text-sm font-medium text-white">{log.userName}</td>
+                                <td className="px-4 py-2 text-sm text-gray-300">{log.action}</td>
+                                <td className="px-4 py-2 text-sm text-gray-400">{log.details.targetName ? `${log.details.targetName} (${log.details.targetId?.slice(-6)})` : 'System Level'}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                 {logs?.length === 0 && <p className="text-center text-gray-500 py-8">No audit logs found.</p>}
+            </div>
+        </section>
+    );
+};
+
+const ReportsPage: React.FC = () => {
+    const [activeTab, setActiveTab] = useState<ReportTab>('performance');
+
+    const renderContent = () => {
+        switch(activeTab) {
+            case 'performance': return <PerformanceTab />;
+            case 'history': return <VehicleHistoryTab />;
+            case 'audit': return <AuditLogTab />;
+            default: return null;
+        }
+    }
+
+    return (
+        <div className="container mx-auto p-4 md:p-8">
+            <header className="mb-8"><h1 className="text-3xl font-bold text-white">Reports & Analytics</h1><p className="text-gray-400 mt-1">Key insights into your business performance and activity.</p></header>
             
-            <section>
-                 <h2 className="text-xl font-bold text-white mb-4 flex items-center"><ClipboardListIcon className="w-6 h-6 mr-3 text-gray-400"/>Vehicle Service History</h2>
-                 <div className="bg-gray-800 rounded-lg shadow-lg p-6">
-                    <div className="relative mb-4"><input type="text" placeholder="Search by VIN, make, model, or customer name..." value={vehicleSearch} onChange={e => setVehicleSearch(e.target.value)} className="w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 pl-10 text-white"/><SearchIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"/></div>
-                    {vehicleSearch.trim() ? (
-                        vehicleHistory ? (
-                            <div>
-                                <h3 className="text-lg font-bold text-white">{`${vehicleHistory.vehicle.year} ${vehicleHistory.vehicle.make} ${vehicleHistory.vehicle.model}`}</h3>
-                                <p className="text-sm text-gray-400">Owner: {vehicleHistory.customerName}</p>
-                                <div className="mt-4 border-t border-gray-700 pt-4"><table className="min-w-full"><thead className="bg-gray-700/50"><tr><th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Date</th><th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Services</th><th className="px-4 py-2 text-right text-xs font-medium text-gray-300 uppercase">Total</th></tr></thead><tbody className="divide-y divide-gray-700">{vehicleHistory.jobs.map(job => (<tr key={job._id}><td className="px-4 py-3 text-sm">{new Date(job.estimateDate).toLocaleDateString()}</td><td className="px-4 py-3 text-sm">{job.serviceNames.join(', ')}</td><td className="px-4 py-3 text-right text-sm font-semibold text-blue-400">${job.totalAmount.toFixed(2)}</td></tr>))}</tbody></table></div>
-                            </div>
-                        ) : ( <p className="text-center text-gray-500 py-4">No vehicle found matching your search.</p> )
-                    ) : ( <p className="text-center text-gray-500 py-4">Enter a search term to find a vehicle's history.</p> )}
-                 </div>
-            </section>
+            <div className="bg-gray-800 rounded-lg p-2 mb-8">
+                <div className="flex flex-wrap items-center gap-2">
+                    <TabButton tab="performance" activeTab={activeTab} setActiveTab={setActiveTab} icon={<ChartBarIcon className="w-5 h-5" />}>Performance</TabButton>
+                    <TabButton tab="history" activeTab={activeTab} setActiveTab={setActiveTab} icon={<ClipboardListIcon className="w-5 h-5" />}>Vehicle History</TabButton>
+                    <TabButton tab="audit" activeTab={activeTab} setActiveTab={setActiveTab} icon={<DocumentMagnifyingGlassIcon className="w-5 h-5" />}>Audit Log</TabButton>
+                </div>
+            </div>
+            
+            {renderContent()}
         </div>
     );
 };

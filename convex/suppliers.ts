@@ -1,5 +1,6 @@
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
+import { internal } from './_generated/api';
 
 export const create = mutation({
     args: {
@@ -27,6 +28,9 @@ export const update = mutation({
 export const remove = mutation({
     args: { id: v.id('suppliers') },
     handler: async (ctx, { id }) => {
+        const supplier = await ctx.db.get(id);
+        if (!supplier) return;
+
         const productsFromSupplier = await ctx.db
             .query('products')
             .filter(q => q.eq(q.field('supplierId'), id))
@@ -36,6 +40,14 @@ export const remove = mutation({
             throw new Error("Cannot delete supplier with associated products. Please reassign or delete the products first.");
         }
         
-        return await ctx.db.delete(id);
+        await ctx.db.delete(id);
+
+        await ctx.runMutation(internal.auditLog.record, {
+            action: "delete_supplier",
+            details: {
+                targetId: id,
+                targetName: supplier.name,
+            }
+        });
     }
 });

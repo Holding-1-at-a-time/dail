@@ -1,6 +1,7 @@
 
 import { v } from 'convex/values';
 import { mutation, action, query } from './_generated/server';
+import { internal } from './_generated/api';
 
 export const get = query({
     handler: async (ctx) => {
@@ -14,13 +15,29 @@ export const save = mutation({
         name: v.string(),
         defaultLaborRate: v.number(),
         enableSmartInventory: v.boolean(),
-        businessHours: v.optional(v.any()),
+        businessHours: v.optional(v.object({
+            monday: v.optional(v.object({ start: v.string(), end: v.string(), enabled: v.boolean() })),
+            tuesday: v.optional(v.object({ start: v.string(), end: v.string(), enabled: v.boolean() })),
+            wednesday: v.optional(v.object({ start: v.string(), end: v.string(), enabled: v.boolean() })),
+            thursday: v.optional(v.object({ start: v.string(), end: v.string(), enabled: v.boolean() })),
+            friday: v.optional(v.object({ start: v.string(), end: v.string(), enabled: v.boolean() })),
+            saturday: v.optional(v.object({ start: v.string(), end: v.string(), enabled: v.boolean() })),
+            sunday: v.optional(v.object({ start: v.string(), end: v.string(), enabled: v.boolean() })),
+        })),
         bookingLeadTimeDays: v.optional(v.number()),
         slotDurationMinutes: v.optional(v.number()),
         enableEmailReminders: v.optional(v.boolean()),
     },
     handler: async (ctx, { id, ...rest }) => {
         await ctx.db.patch(id, rest);
+        
+        await ctx.runMutation(internal.auditLog.record, {
+            action: "update_company_settings",
+            details: {
+                targetId: id,
+                targetName: rest.name,
+            }
+        });
     }
 });
 

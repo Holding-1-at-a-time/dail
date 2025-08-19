@@ -49,5 +49,7 @@ export type Notification = Doc<"notifications">;
 export type LearnedProductServiceMapping = Doc<"learnedProductServiceMapping">;
 export type CommunicationLog = Doc<"communicationLogs">;
 export type Subscription = Doc<"subscriptions">;
+export type AuditLog = Doc<"auditLogs">;
+export type Snapshot = Doc<"snapshots">;
 
 export type Page = 'dashboard' | 'management' | 'schedule' | 'settings' | 'reports' | 'inventory' | 'marketing' | 'stripe-onboarding' | 'knowledge-base' | 'assistant';

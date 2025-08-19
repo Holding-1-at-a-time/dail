@@ -1,5 +1,6 @@
 import { v } from 'convex/values';
 import { mutation } from './_generated/server';
+import { internal } from './_generated/api';
 
 export const create = mutation({
     args: {
@@ -27,6 +28,17 @@ export const update = mutation({
 export const remove = mutation({
     args: { id: v.id('checklists') },
     handler: async (ctx, { id }) => {
-        return await ctx.db.delete(id);
+        const checklist = await ctx.db.get(id);
+        if (!checklist) return;
+
+        await ctx.db.delete(id);
+
+        await ctx.runMutation(internal.auditLog.record, {
+            action: "delete_checklist",
+            details: {
+                targetId: id,
+                targetName: checklist.name,
+            }
+        });
     }
 });

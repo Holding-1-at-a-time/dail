@@ -1,5 +1,6 @@
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
+import { internal } from './_generated/api';
 
 export const getAll = query({
     handler: async (ctx) => {
@@ -49,8 +50,19 @@ export const update = mutation({
 export const remove = mutation({
     args: { id: v.id('services') },
     handler: async (ctx, { id }) => {
+        const service = await ctx.db.get(id);
+        if (!service) return;
+
         // You might want to add logic here to check if the service is used in jobs
-        return await ctx.db.delete(id);
+        await ctx.db.delete(id);
+        
+        await ctx.runMutation(internal.auditLog.record, {
+            action: "delete_service",
+            details: {
+                targetId: id,
+                targetName: service.name,
+            }
+        });
     }
 });
 

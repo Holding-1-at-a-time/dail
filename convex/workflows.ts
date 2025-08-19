@@ -37,7 +37,7 @@ export const visualQuoteWorkflow = defaultPriorityWorkflowManager.define({
         suggestedUpchargeIds: Id<'upcharges'>[];
     }> => {
         return await step.runAction(internal.workflows.prepareAndAnalyzePhotos, { jobId }, {
-            retry: { maxAttempts: 3, initialBackoffMs: 1000 }
+            retry: { maxAttempts: 3, initialBackoffMs: 1000, base: 2 }
         });
     }
 });
@@ -165,7 +165,7 @@ export const campaignGenerationWorkflow = lowPriorityWorkflowManager.define({
     args: { goal: v.string() },
     handler: async (step, { goal }): Promise<{ subject: string; body: string; }> => {
         return await step.runAction(internal.workflows.generateCampaignText, { goal }, {
-            retry: { maxAttempts: 3, initialBackoffMs: 1000 }
+            retry: { maxAttempts: 3, initialBackoffMs: 1000, base: 2 }
         });
     }
 });
@@ -292,7 +292,7 @@ export const sendCampaignWorkflow = lowPriorityWorkflowManager.define({
                 to: customer.email,
                 subject: campaign.subject!,
                 body: campaign.body!.replace('{customer.name}', customer.name),
-            }, { retry: { maxAttempts: 2, initialBackoffMs: 1000 } })
+            }, { retry: { maxAttempts: 2, initialBackoffMs: 1000, base: 2 } })
         ));
     }
 });
@@ -346,7 +346,7 @@ export const appointmentReminderWorkflow = highPriorityWorkflowManager.define({
     args: { appointmentId: v.id('appointments') },
     handler: async (step, { appointmentId }): Promise<void> => {
         await step.runAction(internal.workflows.sendAndLogReminderEmailAction, { appointmentId }, {
-            retry: { maxAttempts: 3, initialBackoffMs: 60 * 1000 } // Retry up to 3 times over a few minutes
+            retry: { maxAttempts: 3, initialBackoffMs: 60 * 1000, base: 2 } // Retry up to 3 times over a few minutes
         });
     }
 });

@@ -1,5 +1,6 @@
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
+import { internal } from './_generated/api';
 
 // --- Pricing Matrices ---
 
@@ -39,7 +40,18 @@ export const updateMatrix = mutation({
 export const deleteMatrix = mutation({
     args: { id: v.id('pricingMatrices') },
     handler: async (ctx, { id }) => {
-        return await ctx.db.delete(id);
+        const matrix = await ctx.db.get(id);
+        if (!matrix) return;
+
+        await ctx.db.delete(id);
+        
+        await ctx.runMutation(internal.auditLog.record, {
+            action: "delete_pricing_matrix",
+            details: {
+                targetId: id,
+                targetName: matrix.name,
+            }
+        });
     }
 });
 
@@ -73,7 +85,18 @@ export const updateUpcharge = mutation({
 export const deleteUpcharge = mutation({
     args: { id: v.id('upcharges') },
     handler: async (ctx, { id }) => {
-        return await ctx.db.delete(id);
+        const upcharge = await ctx.db.get(id);
+        if (!upcharge) return;
+        
+        await ctx.db.delete(id);
+        
+        await ctx.runMutation(internal.auditLog.record, {
+            action: "delete_upcharge",
+            details: {
+                targetId: id,
+                targetName: upcharge.name,
+            }
+        });
     }
 });
 

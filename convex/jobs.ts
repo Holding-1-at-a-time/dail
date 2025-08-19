@@ -293,6 +293,15 @@ export const savePayment = mutation({
         }
 
         await ctx.db.patch(jobId, { payments, paymentReceived, paymentStatus, status, completionDate });
+        
+        await ctx.runMutation(internal.auditLog.record, {
+            action: "record_payment",
+            details: {
+                targetId: jobId,
+                targetName: `Job #${jobId.slice(-6)}`,
+                extra: { amount: payment.amount, method: payment.method }
+            }
+        });
 
         const newDoc = await ctx.db.get(jobId);
         if (newDoc) {

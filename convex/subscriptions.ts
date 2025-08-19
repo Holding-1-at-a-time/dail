@@ -1,6 +1,7 @@
 import { v } from 'convex/values';
 import { internalAction, mutation, query } from './_generated/server';
 import { Id } from './_generated/dataModel';
+import { internal } from './_generated/api';
 
 export const list = query({
     handler: async (ctx) => {
@@ -39,6 +40,20 @@ export const updateStatus = mutation({
     },
     handler: async (ctx, { id, status }) => {
         await ctx.db.patch(id, { status });
+
+        if (status === 'cancelled') {
+            const subscription = await ctx.db.get(id);
+            if (subscription) {
+                const customer = await ctx.db.get(subscription.customerId);
+                await ctx.runMutation(internal.auditLog.record, {
+                    action: "cancel_subscription",
+                    details: {
+                        targetId: id,
+                        targetName: `Subscription for ${customer?.name || 'Unknown'}`,
+                    }
+                });
+            }
+        }
     }
 });
 

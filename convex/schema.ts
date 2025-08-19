@@ -232,4 +232,22 @@ export default defineSchema({
     startDate: v.number(),
     nextDueDate: v.number(),
   }).index('by_customer', ['customerId']).index('by_next_due_date', ['nextDueDate']),
+
+  auditLogs: defineTable({
+    userId: v.id('users'),
+    userName: v.string(),
+    action: v.string(),
+    details: v.object({
+      targetId: v.optional(v.string()),
+      targetName: v.optional(v.string()),
+      extra: v.optional(v.any()),
+    }),
+    timestamp: v.number(),
+  }).index("by_timestamp", ["timestamp"]),
+
+  snapshots: defineTable({
+    name: v.string(),
+    createdBy: v.string(),
+    timestamp: v.number(),
+  }).index("by_timestamp", ["timestamp"]),
 });

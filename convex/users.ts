@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { customerCount, jobStats, productStockStatusAggregate } from "./aggregates";
 import { Doc, Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 
 type JobStatus = "estimate" | "workOrder" | "invoice" | "completed" | "cancelled";
 
@@ -206,7 +207,24 @@ export const update = mutation({
     const currentUser = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject)).unique();
     if (currentUser?.role !== 'admin') throw new Error("Not authorized");
 
+    const userToUpdate = await ctx.db.get(id);
+    if (!userToUpdate) throw new Error("User not found");
+
     await ctx.db.patch(id, rest);
+
+    await ctx.runMutation(internal.auditLog.record, {
+      action: "update_user",
+      details: {
+        targetId: id,
+        targetName: rest.name,
+        extra: {
+          oldRole: userToUpdate.role,
+          newRole: rest.role,
+          oldName: userToUpdate.name,
+          newName: rest.name,
+        }
+      }
+    });
   },
 });
 

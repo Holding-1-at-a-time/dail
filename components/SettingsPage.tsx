@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '../convex/_generated/api';
-import { User, Company, Page } from '../types';
-import { PlusIcon, EditIcon, TrashIcon, UserCircleIcon, OfficeBuildingIcon, StripeIcon, LinkIcon, EnvelopeIcon } from './icons';
+import { User, Company, Page, Snapshot } from '../types';
+import { PlusIcon, EditIcon, TrashIcon, UserCircleIcon, OfficeBuildingIcon, StripeIcon, LinkIcon, EnvelopeIcon, ShieldCheckIcon, ArchiveBoxIcon } from './icons';
 import UserFormModal from './UserFormModal';
 
 interface SettingsPageProps {
@@ -47,13 +46,15 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ setActivePage }) => {
     const currentUser = data?.currentUser;
     const users = data?.allUsers ?? [];
     const company = data?.company;
+    const snapshots = useQuery(api.dataManagement.listSnapshots) ?? [];
     
     const saveCompany = useMutation(api.company.save);
-    const seedDatabase = useMutation(api.dev.seedDatabase);
+    const createSnapshot = useAction(api.dataManagement.createSnapshot);
 
     const [isUserModalOpen, setIsUserModalOpen] = useState(false);
     const [userToEdit, setUserToEdit] = useState<User | null>(null);
     const [companyData, setCompanyData] = useState<Company | null>(company || null);
+    const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
     
     useEffect(() => {
         if (company) {
@@ -111,15 +112,18 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ setActivePage }) => {
             alert('Company profile saved!');
         }
     };
-    
-    const handleSeed = async () => {
-        if (window.confirm("This will delete all existing data and replace it with sample data. Are you sure?")) {
+
+    const handleCreateSnapshot = async () => {
+        if (window.confirm("This will create a named recovery point. This is NOT a substitute for Convex's built-in point-in-time recovery but can be used to mark important events. Are you sure?")) {
+            setIsCreatingSnapshot(true);
             try {
-                await seedDatabase();
-                alert("Database seeded successfully!");
+                await createSnapshot();
+                alert("Snapshot created successfully!");
             } catch (error) {
                 console.error(error);
-                alert("Failed to seed database.");
+                alert("Failed to create snapshot.");
+            } finally {
+                setIsCreatingSnapshot(false);
             }
         }
     };
@@ -194,20 +198,54 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ setActivePage }) => {
                         </div>
                     </div>
                 </section>
+                
+                <section id="data-management" className="mb-12">
+                    <div className="bg-gray-800 rounded-lg shadow-lg p-6">
+                        <h2 className="text-xl font-bold text-white flex items-center mb-6">
+                            <ShieldCheckIcon className="w-6 h-6 mr-3 text-gray-400" />
+                            Data Management & Security
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <h3 className="text-lg font-semibold text-white mb-3">Data Snapshots</h3>
+                                <p className="text-sm text-gray-400 mb-4">
+                                    Create a manual backup of your data. Convex automatically provides point-in-time recovery, but snapshots are useful for marking specific events like before a major data import.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={handleCreateSnapshot}
+                                    disabled={isCreatingSnapshot}
+                                    className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:bg-gray-500"
+                                >
+                                    <ArchiveBoxIcon className="w-5 h-5 mr-2" />
+                                    {isCreatingSnapshot ? 'Creating...' : 'Create New Snapshot'}
+                                </button>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-semibold text-white mb-3">Recent Snapshots</h3>
+                                <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                                    {snapshots.length > 0 ? snapshots.map(snap => (
+                                        <div key={snap._id} className="bg-gray-700/50 p-2 rounded-md text-sm">
+                                            <p className="font-semibold text-gray-200">{snap.name}</p>
+                                            <p className="text-xs text-gray-400">Created by {snap.createdBy} on {new Date(snap.timestamp).toLocaleString()}</p>
+                                        </div>
+                                    )) : (
+                                        <p className="text-sm text-gray-500 italic">No recent snapshots found.</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="mt-6 pt-6 border-t border-gray-700">
+                            <h3 className="text-lg font-semibold text-white mb-3">Security Best Practices</h3>
+                            <p className="text-sm text-gray-400">
+                                All sensitive API keys (Clerk, Stripe, Gemini, Convex) are configured via secure environment variables on the Convex dashboard and are not exposed in the frontend code, ensuring production-level security.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
                 <div className="flex justify-end mb-12"><button type="submit" className="py-2 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors text-lg font-semibold">Save All Settings</button></div>
             </form>
-            
-            <section id="billing" className="mb-12">
-                {/* ... existing billing section ... */}
-            </section>
-
-            <section id="user-management">
-                 {/* ... existing user management section ... */}
-            </section>
-            
-            <section id="dev-tools" className="mt-12">
-                {/* ... existing dev tools section ... */}
-            </section>
 
             <UserFormModal isOpen={isUserModalOpen} onClose={handleCloseUserModal} userToEdit={userToEdit} />
         </div>

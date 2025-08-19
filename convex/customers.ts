@@ -1,6 +1,7 @@
 import { v } from 'convex/values';
 import { mutation } from './_generated/server';
 import { customerCount } from './aggregates';
+import { internal } from './_generated/api';
 
 export const saveCustomerWithVehicles = mutation({
     args: {
@@ -67,5 +68,13 @@ export const remove = mutation({
         }
         await ctx.db.delete(id);
         await customerCount.delete(ctx, customerDoc);
+        
+        await ctx.runMutation(internal.auditLog.record, {
+            action: "delete_customer",
+            details: {
+                targetId: id,
+                targetName: customerDoc.name
+            }
+        });
     }
 });
