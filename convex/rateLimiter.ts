@@ -1,5 +1,5 @@
 import { RateLimiter, MINUTE, HOUR } from "@convex-dev/rate-limiter";
-import { components, api } from "./_generated/api";
+import { api } from "./_generated/api";
 import { QueryCtx } from "./_generated/server";
 
 // Helper to get the user ID for per-user rate limiting.
@@ -11,7 +11,7 @@ const getUserId = async (ctx: { auth: { getUserIdentity: () => Promise<any | nul
   return identity.subject;
 };
 
-export const rateLimiter = new RateLimiter(components.rateLimiter, {
+export const rateLimiter = new RateLimiter(api.rateLimiter, {
   // Public booking form: 10 bookings per hour, global.
   publicBooking: { kind: "fixed window", rate: 10, period: HOUR },
 
@@ -28,5 +28,5 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
 // Export the React hook API for the assistant chat
 export const { getRateLimit, getServerTime } = rateLimiter.hookAPI(
   "assistant",
-  { key: async (ctx) => getUserId(ctx as QueryCtx) }
+  { key: async (ctx) => getUserId(ctx) }
 );

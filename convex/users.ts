@@ -97,13 +97,13 @@ export const getDashboardData = query({
 
     // --- OPTIMIZED STATS ---
     const totalCustomers = await customerCount.count(ctx);
-    const workOrderCount = await jobStats.count(ctx, { bounds: { prefix: ['workOrder'] } });
-    const invoiceCount = await jobStats.count(ctx, { bounds: { prefix: ['invoice'] } });
+    const workOrderCount = await jobStats.count(ctx, { namespace: undefined, bounds: { prefix: ['workOrder'] } });
+    const invoiceCount = await jobStats.count(ctx, { namespace: undefined, bounds: { prefix: ['invoice'] } });
     const activeJobs = workOrderCount + invoiceCount;
     
     const oneMonthAgoTimestamp = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const lowerBoundKey = ['completed', oneMonthAgoTimestamp] as [JobStatus, number];
-    const upperBoundKey = ['completed', Date.now()] as [JobStatus, number];
+    const lowerBoundKey: [JobStatus, number] = ['completed', oneMonthAgoTimestamp];
+    const upperBoundKey: [JobStatus, number] = ['completed', Date.now()];
 
     const revenueThisMonth = await jobStats.sum(ctx, {
         namespace: undefined,
@@ -136,7 +136,7 @@ export const getDashboardData = query({
         }
     });
 
-    const completedJobIds = completedJobsLastMonth.page.map(item => (item as any)._id);
+    const completedJobIds = completedJobsLastMonth.page.map((item: Doc<'jobs'>) => item._id);
     const nullableJobDocs: (Doc<"jobs"> | null)[] = await Promise.all(
       completedJobIds.map(id => ctx.db.get(id))
     );

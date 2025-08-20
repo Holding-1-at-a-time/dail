@@ -1,17 +1,18 @@
-import { z } from 'zod';
+import { v } from 'convex/values';
 import { Agent, createTool } from '@convex-dev/agent';
-import { api, internal, components } from './_generated/api';
+import { api, internal } from './_generated/api';
 import { Doc, Id } from './_generated/dataModel';
 import { openai } from '@ai-sdk/openai';
 import { internalQuery, internalAction, internalMutation } from './_generated/server';
+import { z } from 'zod';
 
 // --- Tool Definitions for the AI Assistant ---
 
 const getAppointments = createTool({
     description: "Get a list of scheduled appointments within a given date range.",
     args: z.object({
-        startDate: z.string().describe("The start date for the query in ISO 8601 format."),
-        endDate: z.string().describe("The end date for the query in ISO 8601 format."),
+        startDate: z.string(), // ISO 8601 format
+        endDate: z.string(), // ISO 8601 format
     }),
     handler: async (ctx, { startDate, endDate }) => {
         const start = new Date(startDate).getTime();
@@ -32,7 +33,7 @@ const getAppointments = createTool({
 const findCustomer = createTool({
     description: "Find a customer's contact information by their name.",
     args: z.object({
-        name: z.string().describe("The full or partial name of the customer to search for."),
+        name: z.string(),
     }),
     handler: async (ctx, { name }) => {
         const customer = await ctx.runQuery(internal.agent.findCustomerByName, { name });
@@ -46,8 +47,8 @@ const findCustomer = createTool({
 const getJobStatus = createTool({
     description: "Get the current status of a specific job.",
     args: z.object({
-        customerName: z.string().describe("The name of the customer associated with the job."),
-        vehicleIdentifier: z.string().describe("A description of the vehicle, e.g., 'Toyota Camry' or 'the Ford truck'."),
+        customerName: z.string(),
+        vehicleIdentifier: z.string(),
     }),
     handler: async (ctx, { customerName, vehicleIdentifier }) => {
         const job = await ctx.runQuery(internal.agent.findJobByDetails, { customerName, vehicleIdentifier });
@@ -61,7 +62,7 @@ const getJobStatus = createTool({
 const getInventoryLevel = createTool({
     description: "Check the current stock level for a specific product in inventory.",
     args: z.object({
-        productName: z.string().describe("The name of the product to check."),
+        productName: z.string(),
     }),
     handler: async (ctx, { productName }) => {
         const product = await ctx.runQuery(internal.agent.findProductByName, { productName });
@@ -75,10 +76,10 @@ const getInventoryLevel = createTool({
 const scheduleJob = createTool({
     description: "Schedule a new job for a customer. This involves finding the customer, vehicle, and service, then finding an available time slot and creating the job and appointment.",
     args: z.object({
-        customerName: z.string().describe("The full name of the customer."),
-        vehicleIdentifier: z.string().describe("A description of the vehicle (e.g., 'Toyota Camry', 'F-150')."),
-        serviceName: z.string().describe("The name of the service to be performed (e.g., 'Basic Wash')."),
-        desiredTimeframe: z.string().describe("The user's desired time for the appointment (e.g., 'tomorrow afternoon', 'next Tuesday', 'sometime next week')."),
+        customerName: z.string(),
+        vehicleIdentifier: z.string(),
+        serviceName: z.string(),
+        desiredTimeframe: z.string(),
     }),
     handler: async (ctx, { customerName, vehicleIdentifier, serviceName, desiredTimeframe }) => {
         const result = await ctx.runAction(internal.agent.scheduleJobAction, { customerName, vehicleIdentifier, serviceName, desiredTimeframe });
@@ -89,7 +90,7 @@ const scheduleJob = createTool({
 
 // --- Agent Definition ---
 
-export const agent = new Agent(components.agent, {
+export const agent = new Agent(api.agent, {
   name: "assistant",
   languageModel: openai.chat("gpt-4o-mini"),
   instructions: "You are an expert assistant for an auto detailing business. You are helpful, friendly, and efficient. When a user asks to schedule a job, you MUST use the `scheduleJob` tool. Do not try to schedule it manually. If information is missing, ask for it. When asked about schedules, use the `getAppointments` tool.",
@@ -129,7 +130,7 @@ export const findCustomerByName = internalQuery(async (ctx, { name }: { name: st
 });
 
 export const findJobByDetails = internalQuery(async (ctx, { customerName, vehicleIdentifier }: { customerName: string; vehicleIdentifier: string }) => {
-  const customer = await findCustomerByName(ctx, { name: customerName });
+  const customer = await ctx.runQuery(internal.agent.findCustomerByName, { name: customerName });
   if (!customer) return null;
   
   const vehicles = await ctx.db.query('vehicles').withIndex('by_customer', q => q.eq('customerId', customer._id)).collect();
@@ -154,12 +155,12 @@ export const findProductByName = internalQuery(async (ctx, { productName }: { pr
 });
 
 export const scheduleJobAction = internalAction({
-    args: {
-        customerName: z.string(),
-        vehicleIdentifier: z.string(),
-        serviceName: z.string(),
-        desiredTimeframe: z.string(),
-    },
+    args: v.object({
+        customerName: v.string(),
+        vehicleIdentifier: v.string(),
+        serviceName: v.string(),
+        desiredTimeframe: v.string(),
+    }),
     handler: async (ctx, { customerName, vehicleIdentifier, serviceName, desiredTimeframe }) => {
         let customer = await ctx.runQuery(internal.agent.findCustomerByName, { name: customerName });
         if (!customer) {

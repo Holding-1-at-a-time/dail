@@ -276,7 +276,12 @@ export const generateInvoice = mutation({
 export const savePayment = mutation({
     args: {
         jobId: v.id('jobs'),
-        payment: v.object({ amount: v.number(), paymentDate: v.number(), method: v.string(), notes: v.optional(v.string()) })
+        payment: v.object({ 
+            amount: v.number(), 
+            paymentDate: v.number(), 
+            method: v.union(v.literal('Cash'), v.literal('Credit Card'), v.literal('Check'), v.literal('Bank Transfer'), v.literal('Other')), 
+            notes: v.optional(v.string()) 
+        })
     },
     handler: async (ctx, { jobId, payment }) => {
         const oldJob = await ctx.db.get(jobId);

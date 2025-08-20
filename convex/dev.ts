@@ -1,14 +1,20 @@
 import { mutation } from './_generated/server';
+import { DataModel, Doc } from './_generated/dataModel';
 
 export const seedDatabase = mutation({
     handler: async (ctx) => {
         // Clear existing data
-        const tables: (keyof typeof ctx.db._tables)[] = [
+        const tables: (keyof DataModel)[] = [
             "users", "company", "services", "pricingMatrices", "upcharges", 
             "checklists", "customers", "vehicles", "jobs", "appointments", 
-            "suppliers", "products", "promotions", "campaigns"
+            "suppliers", "products", "promotions", "campaigns",
+            "auditLogs", "snapshots", "inventoryLog", "communicationLogs",
+            "learnedProductServiceMapping", "notifications", "subscriptions",
+            "threads", "messages"
         ];
         for (const table of tables) {
+            // Skip system tables if any are accidentally included
+            if (typeof table === "string" && table.startsWith("_")) continue;
             const docs = await ctx.db.query(table).collect();
             await Promise.all(docs.map(doc => ctx.db.delete(doc._id)));
         }
@@ -17,20 +23,15 @@ export const seedDatabase = mutation({
         const identity = await ctx.auth.getUserIdentity();
         if (!identity) throw new Error("Cannot seed without authenticated user.");
         
-        let adminUser = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject!)).unique();
+        let adminUser: Doc<"users"> | null = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject!)).unique();
         if (!adminUser) {
-            adminUser = {
-                _id: await ctx.db.insert("users", {
-                    clerkId: identity.subject!,
-                    name: identity.name!,
-                    email: identity.email!,
-                    role: "admin",
-                }),
+            const userId = await ctx.db.insert("users", {
                 clerkId: identity.subject!,
                 name: identity.name!,
                 email: identity.email!,
                 role: "admin",
-            };
+            });
+            adminUser = await ctx.db.get(userId);
         }
 
         const companyId = await ctx.db.insert("company", {

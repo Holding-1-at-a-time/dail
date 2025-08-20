@@ -1,4 +1,4 @@
-import { components, internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { RAG } from "@convex-dev/rag";
 import { openai } from "@ai-sdk/openai";
 import { action, internalAction, ActionCtx } from "./_generated/server";
@@ -17,13 +17,13 @@ const getUserId = async (ctx: ActionCtx) => {
   return identity.subject;
 };
 
-export const rag = new RAG(components.rag, {
+export const rag = new RAG(api.rag, {
   textEmbeddingModel: openai.embedding("text-embedding-3-small"),
   embeddingDimension: 1536, // Needs to match your embedding model
 });
 
 // Workpool for RAG ingestion to control concurrency and add retries.
-export const ragWorkpool = new Workpool(components.ragWorkpool, {
+export const ragWorkpool = new Workpool(api.ragWorkpool, {
   maxParallelism: 3, // Process up to 3 documents at a time.
   retryActionsByDefault: true,
   defaultRetryBehavior: { maxAttempts: 5, initialBackoffMs: 1000, base: 2 },

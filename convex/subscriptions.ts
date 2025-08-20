@@ -1,5 +1,5 @@
 import { v } from 'convex/values';
-import { internalAction, mutation, query } from './_generated/server';
+import { internalAction, mutation, query, internalQuery, internalMutation } from './_generated/server';
 import { Id } from './_generated/dataModel';
 import { internal } from './_generated/api';
 
@@ -57,19 +57,42 @@ export const updateStatus = mutation({
     }
 });
 
+// --- Internal Functions for Recurring Job Generation ---
+
+export const getDueSubscriptions = internalQuery(async ({ db }) => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const todayTimestamp = now.getTime();
+    return await db
+        .query('subscriptions')
+        .withIndex('by_next_due_date', q => q.lte('nextDueDate', todayTimestamp))
+        .filter(q => q.eq(q.field('status'), 'active'))
+        .collect();
+});
+
+export const getFirstVehicleForCustomer = internalQuery(async ({ db }, { customerId }: { customerId: Id<'customers'> }) => {
+    return db.query('vehicles').withIndex('by_customer', q => q.eq('customerId', customerId)).first();
+});
+
+export const getServicesForSubscription = internalQuery(async ({ db }, { serviceIds }: { serviceIds: Id<'services'>[] }) => {
+    return await Promise.all(serviceIds.map(id => db.get(id)));
+});
+
+export const createJobFromSubscription = internalMutation(async ({ db }, args: any) => {
+    return await db.insert('jobs', args);
+});
+
+export const createAppointmentForJob = internalMutation(async ({ db }, args: any) => {
+    await db.insert('appointments', args);
+});
+
+export const updateSubscriptionDueDate = internalMutation(async ({ db }, { id, nextDueDate }: { id: Id<'subscriptions'>, nextDueDate: number }) => {
+    await db.patch(id, { nextDueDate });
+});
+
 export const generateRecurringJobs = internalAction({
     handler: async (ctx) => {
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
-        const todayTimestamp = now.getTime();
-
-        const dueSubscriptions = await ctx.runQuery(query(async ({ db }) => {
-            return await db
-                .query('subscriptions')
-                .withIndex('by_next_due_date', q => q.lte('nextDueDate', todayTimestamp))
-                .filter(q => q.eq(q.field('status'), 'active'))
-                .collect();
-        }));
+        const dueSubscriptions = await ctx.runQuery(internal.subscriptions.getDueSubscriptions);
 
         if (dueSubscriptions.length === 0) {
             console.log("No recurring jobs to generate today.");
@@ -77,16 +100,13 @@ export const generateRecurringJobs = internalAction({
         }
 
         for (const sub of dueSubscriptions) {
-            const vehicles = await ctx.runQuery(query(async ({ db }) => {
-                return db.query('vehicles').withIndex('by_customer', q => q.eq('customerId', sub.customerId)).first();
-            }));
-
-            if (!vehicles) {
+            const vehicle = await ctx.runQuery(internal.subscriptions.getFirstVehicleForCustomer, { customerId: sub.customerId });
+            if (!vehicle) {
                 console.warn(`Skipping job for subscription ${sub._id} as customer has no vehicles.`);
                 continue;
             }
 
-            const services = await Promise.all(sub.serviceIds.map(id => ctx.runQuery(query(async ({db}) => db.get(id)))));
+            const services = await ctx.runQuery(internal.subscriptions.getServicesForSubscription, { serviceIds: sub.serviceIds });
             const jobItems = services.filter(Boolean).map(service => ({
                 id: `item_${Date.now()}_${service!._id}`,
                 serviceId: service!._id,
@@ -97,11 +117,9 @@ export const generateRecurringJobs = internalAction({
                 total: service!.basePrice,
             }));
 
-            const jobId = await ctx.runMutation(mutation(async ({ db }, args) => {
-                return await db.insert('jobs', args);
-            }), {
+            const jobId = await ctx.runMutation(internal.subscriptions.createJobFromSubscription, {
                 customerId: sub.customerId,
-                vehicleId: vehicles._id,
+                vehicleId: vehicle._id,
                 status: 'workOrder' as const,
                 estimateDate: Date.now(),
                 workOrderDate: Date.now(),
@@ -114,13 +132,10 @@ export const generateRecurringJobs = internalAction({
                 inventoryDebited: false
             });
             
-            // Schedule for morning of due date
             const appointmentTime = new Date(sub.nextDueDate);
             appointmentTime.setHours(9, 0, 0, 0);
 
-            await ctx.runMutation(mutation(async({db}, args) => {
-                await db.insert('appointments', args);
-            }), {
+            await ctx.runMutation(internal.subscriptions.createAppointmentForJob, {
                 jobId,
                 startTime: appointmentTime.getTime(),
                 endTime: appointmentTime.getTime() + 2 * 60 * 60 * 1000, // Placeholder 2hr duration
@@ -128,7 +143,6 @@ export const generateRecurringJobs = internalAction({
                 description: "Recurring Service",
             });
             
-            // Calculate next due date
             const nextDueDate = new Date(sub.nextDueDate);
             switch (sub.frequency) {
                 case 'weekly': nextDueDate.setDate(nextDueDate.getDate() + 7); break;
@@ -138,9 +152,7 @@ export const generateRecurringJobs = internalAction({
                 case 'yearly': nextDueDate.setFullYear(nextDueDate.getFullYear() + 1); break;
             }
             
-            await ctx.runMutation(mutation(async({db}, args) => {
-                await db.patch(args.id, { nextDueDate: args.nextDueDate });
-            }), { id: sub._id, nextDueDate: nextDueDate.getTime() });
+            await ctx.runMutation(internal.subscriptions.updateSubscriptionDueDate, { id: sub._id, nextDueDate: nextDueDate.getTime() });
 
             console.log(`Generated job ${jobId} for subscription ${sub._id}`);
         }
