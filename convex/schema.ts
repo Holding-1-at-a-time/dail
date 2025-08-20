@@ -15,7 +15,8 @@ export default defineSchema({
     logoStorageId: v.optional(v.id('_storage')),
     brandColor: v.optional(v.string()),
     defaultLaborRate: v.number(),
-    stripeConnectAccountId: v.optional(v.string()),
+    stripeAccountId: v.optional(v.string()),
+    stripeConnectStatus: v.optional(v.union(v.literal('none'), v.literal('in_progress'), v.literal('complete'), v.literal('needs_attention'))),
     enableSmartInventory: v.optional(v.boolean()),
     businessHours: v.optional(v.object({
         monday: v.optional(v.object({ start: v.string(), end: v.string(), enabled: v.boolean() })),
@@ -132,6 +133,8 @@ export default defineSchema({
     visualQuoteStatus: v.optional(v.union(v.literal('pending'), v.literal('complete'), v.literal('failed'))),
     visualQuoteStorageIds: v.optional(v.array(v.id('_storage'))),
     inventoryDebited: v.optional(v.boolean()),
+    actualStartTime: v.optional(v.number()),
+    actualEndTime: v.optional(v.number()),
   }).index('by_customer', ['customerId']).index('by_public_link_key', ['publicLinkKey']),
 
   appointments: defineTable({
@@ -253,3 +256,4 @@ export default defineSchema({
     timestamp: v.number(),
   }).index("by_timestamp", ["timestamp"]),
 });
+

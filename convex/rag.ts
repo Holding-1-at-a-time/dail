@@ -8,6 +8,9 @@ import { assert } from "convex-helpers";
 import { ragQuestionCache } from "./cache";
 import { rateLimiter } from "./rateLimiter";
 import { Workpool } from "@convex-dev/workpool";
+import { cosineSimilarity } from "../utils/vector";
+import { generateObject } from "ai";
+import { z } from "zod";
 
 const getUserId = async (ctx: ActionCtx) => {
   const identity = await ctx.auth.getUserIdentity();
@@ -17,8 +20,10 @@ const getUserId = async (ctx: ActionCtx) => {
   return identity.subject;
 };
 
+const textEmbeddingModel = openai.embedding("text-embedding-3-small");
+
 export const rag = new RAG(api.rag, {
-  textEmbeddingModel: openai.embedding("text-embedding-3-small"),
+  textEmbeddingModel: textEmbeddingModel,
   embeddingDimension: 1536, // Needs to match your embedding model
 });
 
@@ -39,14 +44,15 @@ export const processDocument = internalAction({
         await rag.addAsync(ctx, {
             namespace: "globalKnowledgeBase",
             key: `file-${storageId}`,
-            chunkerAction: internal.rag.chunkerAction,
+            chunkerAction: internal.rag.semanticChunkerAction,
             metadata: { storageId },
             title: originalFilename,
         });
     }
 });
 
-export const chunkerAction = rag.defineChunkerAction(async (ctx, args) => {
+// Advanced Semantic Chunker
+export const semanticChunkerAction = rag.defineChunkerAction(async (ctx, args) => {
   const storageIdValue = args.entry.metadata!.storageId;
   assert(typeof storageIdValue === "string", `storageId must be a string, but was ${typeof storageIdValue}`);
   const storageId = storageIdValue as Id<"_storage">;
@@ -56,8 +62,33 @@ export const chunkerAction = rag.defineChunkerAction(async (ctx, args) => {
     throw new Error(`File not found for storageId: ${storageId}`);
   }
   const text = await file.text();
-  return { chunks: text.split("\n\n") }; // Simple chunking by paragraph
+  
+  // 1. Split text into sentences
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
+  if (sentences.length === 0) return { chunks: [] };
+
+  // 2. Embed all sentences
+  const { embeddings } = await textEmbeddingModel.doEmbed({ values: sentences });
+
+  // 3. Group sentences into semantic chunks
+  const chunks: string[] = [];
+  let currentChunk: string[] = [sentences[0]];
+  const similarityThreshold = 0.8;
+
+  for (let i = 1; i < sentences.length; i++) {
+    const similarity = cosineSimilarity(embeddings[i - 1], embeddings[i]);
+    if (similarity > similarityThreshold) {
+      currentChunk.push(sentences[i]);
+    } else {
+      chunks.push(currentChunk.join(" ").trim());
+      currentChunk = [sentences[i]];
+    }
+  }
+  chunks.push(currentChunk.join(" ").trim());
+
+  return { chunks };
 });
+
 
 // The public-facing action that uses the cache.
 export const askQuestion = action({
@@ -71,19 +102,63 @@ export const askQuestion = action({
     }
 });
 
-// The core logic, now an internal action.
+// The core logic, now an internal action with an advanced pipeline.
 export const internalAskQuestion = internalAction({
   args: {
     prompt: v.string(),
   },
   handler: async (ctx, args): Promise<{ answer: string; context: any }> => {
-    // We'll use a single global namespace for simplicity in this app.
     const namespace = "globalKnowledgeBase";
-    const { text, context } = await rag.generateText(ctx, {
-      search: { namespace, limit: 5 },
-      prompt: args.prompt,
+
+    // 1. AI-Powered Query Expansion
+    const expansionPrompt = `The user is asking: "${args.prompt}". Generate 3 alternative ways of asking this question to improve search results. Respond ONLY with a JSON array of strings.`;
+    const { object: expandedQueriesArray } = await generateObject({
       model: openai.chat("gpt-4o-mini"),
+      prompt: expansionPrompt,
+      schema: z.array(z.string()),
     });
+    
+    let expandedQueries = [args.prompt, ...expandedQueriesArray];
+
+    // 2. Initial Retrieval (Recall)
+    const searchResults = await Promise.all(
+        expandedQueries.map(q => rag.search(ctx, { namespace, query: q, limit: 5 }))
+    );
+    const uniqueEntries = new Map(searchResults.flatMap(r => r.results).map(r => [r.entryId, r]));
+
+    if (uniqueEntries.size === 0) {
+      return { answer: "I couldn't find any relevant information in the knowledge base to answer your question.", context: { entries: [] } };
+    }
+
+    // 3. Cross-Encoder Re-ranking
+    const rerankPrompt = `Original Question: "${args.prompt}"
+    
+    Candidate Chunks:
+    ${Array.from(uniqueEntries.values()).map((entry, idx) => `[${idx}] ${entry.content.map(c => c.text).join(" ")}`).join("\n\n")}
+    
+    Based on the original question, which chunks are most relevant? Respond ONLY with a JSON object containing a key "ranked_indices" with an array of the indices of the top 3 most relevant chunks, in order of relevance. For example: {"ranked_indices": [2, 0, 4]}`;
+    
+    const { object: rankedResult } = await generateObject({
+      model: openai.chat("gpt-4o-mini"),
+      prompt: rerankPrompt,
+      schema: z.object({ ranked_indices: z.array(z.number()) }),
+    });
+
+    let topEntries = Array.from(uniqueEntries.values()).slice(0, 3);
+    if (rankedResult.ranked_indices && Array.isArray(rankedResult.ranked_indices)) {
+      const allEntries = Array.from(uniqueEntries.values());
+      topEntries = rankedResult.ranked_indices.map((idx: number) => allEntries[idx]).filter(Boolean);
+    }
+
+
+    // 4. Final Generation
+    const context = { namespace, results: topEntries };
+    const { text } = await rag.generateText(ctx, {
+        search: context, // Use the re-ranked context
+        prompt: args.prompt,
+        model: openai.chat("gpt-4o-mini"),
+    });
+
     return { answer: text, context };
   },
 });

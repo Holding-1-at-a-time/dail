@@ -6,7 +6,7 @@ import { Id } from '../convex/_generated/dataModel';
 import { Job, Customer, Vehicle, Service, Payment } from '../types';
 import { CarIcon, UserCircleIcon, BriefcaseIcon, PencilAltIcon, CreditCardIcon } from './icons';
 import SignatureModal from './SignatureModal';
-import PaymentFormModal from './PaymentFormModal';
+import PublicPaymentModal from './PublicPaymentModal';
 
 interface CustomerPortalPageProps {
     data: {
@@ -82,7 +82,7 @@ const CustomerPortalPage: React.FC<CustomerPortalPageProps> = ({ data }) => {
                 </div>
             </div>
             <SignatureModal isOpen={isSignatureModalOpen} onClose={() => setIsSignatureModalOpen(false)} onSave={handleSaveSignature} />
-            <PaymentFormModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} job={job} />
+            <PublicPaymentModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} job={job} />
         </>
     );
 };

@@ -209,12 +209,8 @@ export const getDashboardData = query({
     
 
     const oneMonthAgoTimestamp = Date.now() - 30 * 24 * 60 * 60 * 1000;
-
-    const lowerBoundKey: [JobStatus, number] = ['completed', oneMonthAgoTimestamp];
-
-    const upperBoundKey: [JobStatus, number] = ['completed', Date.now()];
-
-
+    const lowerBoundKey = ['completed', oneMonthAgoTimestamp];
+    const upperBoundKey = ['completed', Date.now()];
 
     const revenueThisMonth = await jobStats.sum(ctx, {
 
@@ -276,10 +272,7 @@ export const getDashboardData = query({
 
     });
 
-
-
-    const completedJobIds = completedJobsLastMonth.page.map((item) => item.key[1]);
-
+    const completedJobIds = completedJobsLastMonth.page.map((item: any) => item._id);
     const nullableJobDocs: (Doc<"jobs"> | null)[] = await Promise.all(
       completedJobIds.map(id => ctx.db.get(id as Id<"jobs">))
     );

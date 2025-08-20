@@ -14,7 +14,6 @@ import ReportsPage from './components/ReportsPage';
 import InventoryPage from './components/InventoryPage';
 import MarketingPage from './components/MarketingPage';
 import CustomerPortalPage from './components/CustomerPortalPage';
-import StripeOnboarding from './components/StripeOnboarding';
 import LandingPage from './components/LandingPage';
 import KnowledgeBasePage from './components/KnowledgeBasePage';
 import AssistantPage from './components/AssistantPage';
@@ -117,7 +116,7 @@ function App() {
         return <SchedulePage currentUser={currentUser} onViewJob={handleViewJobDetail} />;
        case 'settings':
         if (currentUser.role !== 'admin') return null;
-        return <SettingsPage setActivePage={setActivePage} />;
+        return <SettingsPage />;
        case 'reports':
         if (currentUser.role !== 'admin') return null;
         return <ReportsPage />;
