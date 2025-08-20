@@ -1,4 +1,3 @@
-
 import { v } from 'convex/values';
 import { internalMutation, mutation, query, ActionCtx, action } from './_generated/server';
 import { Id } from './_generated/dataModel';
@@ -52,7 +51,8 @@ export const getDataForForm = query({
         const upcharges = await ctx.db.query("upcharges").collect();
         const promotions = await ctx.db.query("promotions").collect();
         const products = await ctx.db.query("products").collect();
-        return { customers, vehicles, services, pricingMatrices, upcharges, promotions, products };
+        const technicians = await ctx.db.query("users").collect();
+        return { customers, vehicles, services, pricingMatrices, upcharges, promotions, products, technicians };
     }
 });
 
@@ -229,6 +229,7 @@ export const save = mutation({
             appliedPricingRuleIds: v.array(v.string()), addedUpchargeIds: v.array(v.id('upcharges')),
             total: v.number()
         })),
+        assignedTechnicianIds: v.optional(v.array(v.id('users'))),
     },
     handler: async (ctx, { id, ...data }) => {
         await requireAuth(ctx);

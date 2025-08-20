@@ -1,4 +1,5 @@
 
+
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
@@ -30,6 +31,7 @@ export default defineSchema({
     bookingLeadTimeDays: v.optional(v.number()),
     slotDurationMinutes: v.optional(v.number()),
     enableEmailReminders: v.optional(v.boolean()),
+    onboardingCompleted: v.optional(v.boolean()),
   }),
 
   services: defineTable({

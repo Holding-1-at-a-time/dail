@@ -1,138 +1,191 @@
-
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
 import { Id } from '../convex/_generated/dataModel';
-import { Appointment, Job, Customer, Vehicle, User } from '../types';
+import { Appointment, User } from '../types';
 import AppointmentFormModal from './AppointmentFormModal';
-import { EditIcon, TrashIcon } from './icons';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import { useToasts } from './ToastProvider';
 
 interface SchedulePageProps {
     currentUser: User | null;
     onViewJob: (jobId: string) => void;
 }
 
-const AppointmentCard: React.FC<{
-    appointment: Appointment;
-    job: Job | undefined;
-    customer: Customer | undefined;
-    vehicle: Vehicle | undefined;
-    onEdit: (appointment: Appointment) => void;
-    onDelete: (appointmentId: Id<'appointments'>) => void;
-    onClick: () => void;
-}> = ({ appointment, job, customer, vehicle, onEdit, onDelete, onClick }) => {
-    const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    return (
-        <button onClick={onClick} className="w-full text-left bg-gray-800 rounded-lg p-3 shadow-lg mb-3 border-l-4 border-blue-500 hover:bg-gray-700 transition-colors">
-            <div className="flex justify-between items-start">
-                <div>
-                    <p className="font-bold text-white text-sm">{customer?.name || 'Unknown'}</p>
-                    <p className="text-xs text-gray-400">{vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : 'Unknown'}</p>
-                </div>
-                <div className="flex space-x-1">
-                    <button onClick={(e) => { e.stopPropagation(); onEdit(appointment); }} className="p-1 text-gray-400 hover:text-blue-400"><EditIcon className="w-4 h-4" /></button>
-                    <button onClick={(e) => { e.stopPropagation(); onDelete(appointment._id); }} className="p-1 text-gray-400 hover:text-red-500"><TrashIcon className="w-4 h-4" /></button>
-                </div>
-            </div>
-            <div className="mt-2 text-xs text-gray-300 bg-gray-700/50 rounded px-2 py-1 inline-block">
-                {formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}
-            </div>
-            {appointment.description && <p className="text-xs text-gray-400 mt-2 italic">"{appointment.description}"</p>}
-        </button>
-    );
-};
-
-
 const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, onViewJob }) => {
-    const [weekOffset, setWeekOffset] = useState(0);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [appointmentToEdit, setAppointmentToEdit] = useState<Appointment | null>(null);
+    const [defaultStartTimeForModal, setDefaultStartTimeForModal] = useState<number | null>(null);
+    const [technicianFilter, setTechnicianFilter] = useState<Id<'users'> | 'all'>('all');
 
     const scheduleData = useQuery(api.appointments.getScheduleData);
-    const appointments = scheduleData?.appointmentsForCurrentUser ?? [];
-    const jobs = scheduleData?.jobsForCurrentUser ?? [];
-    const customers = scheduleData?.customers ?? [];
-    const vehicles = scheduleData?.vehicles ?? [];
+    const rescheduleAppointment = useMutation(api.appointments.reschedule);
+    const { addToast } = useToasts();
     
-    const deleteAppointment = useMutation(api.appointments.remove);
-    
-    const weekDays = useMemo(() => {
-        const startOfWeek = new Date();
-        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + (weekOffset * 7));
-        return Array.from({ length: 7 }).map((_, i) => { const day = new Date(startOfWeek); day.setDate(day.getDate() + i); return day; });
-    }, [weekOffset]);
+    const isAdmin = currentUser?.role === 'admin';
+    const technicians = isAdmin ? scheduleData?.technicians || [] : [];
 
-    const appointmentsByDay = useMemo(() => {
-        const grouped: { [key: string]: Appointment[] } = {};
-        appointments.forEach(appt => {
-            const dayKey = new Date(appt.startTime).toDateString();
-            if (!grouped[dayKey]) grouped[dayKey] = [];
-            grouped[dayKey].push(appt);
-            grouped[dayKey].sort((a, b) => a.startTime - b.startTime);
+    const events = useMemo(() => {
+        if (!scheduleData) return [];
+        const { appointmentsForCurrentUser, jobsForCurrentUser, customers, vehicles } = scheduleData;
+        
+        let appointmentsToDisplay = appointmentsForCurrentUser;
+
+        if (isAdmin && technicianFilter !== 'all') {
+            const filteredJobIds = new Set(
+                jobsForCurrentUser
+                    .filter(j => j.assignedTechnicianIds?.includes(technicianFilter))
+                    .map(j => j._id)
+            );
+            appointmentsToDisplay = appointmentsForCurrentUser.filter(a => filteredJobIds.has(a.jobId));
+        }
+
+        return appointmentsToDisplay.map(appt => {
+            const job = jobsForCurrentUser.find(j => j._id === appt.jobId);
+            const customer = customers.find(c => c?._id === job?.customerId);
+            const vehicle = vehicles.find(v => v?._id === job?.vehicleId);
+            const title = customer ? `${customer.name} - ${vehicle ? `${vehicle.make} ${vehicle.model}` : 'Vehicle'}` : 'Appointment';
+            
+            return {
+                id: appt._id,
+                title,
+                start: new Date(appt.startTime),
+                end: new Date(appt.endTime),
+                extendedProps: {
+                    jobId: appt.jobId,
+                },
+                backgroundColor: 'var(--primary-color)',
+                borderColor: 'var(--primary-color)',
+            };
         });
-        return grouped;
-    }, [appointments]);
-    
-    const handleOpenModal = (appointment: Appointment | null) => {
-        setAppointmentToEdit(appointment);
+    }, [scheduleData, isAdmin, technicianFilter]);
+
+    const handleDateClick = (arg: { date: Date, allDay: boolean }) => {
+        setDefaultStartTimeForModal(arg.date.getTime());
+        setAppointmentToEdit(null);
         setIsModalOpen(true);
     };
 
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setAppointmentToEdit(null);
+    const handleEventClick = (clickInfo: any) => {
+        onViewJob(clickInfo.event.extendedProps.jobId);
     };
     
-    const handleDelete = (id: Id<'appointments'>) => {
-        if(window.confirm('Are you sure you want to delete this appointment?')) {
-            deleteAppointment({id});
+    const handleEventDrop = async (dropInfo: any) => {
+        try {
+            await rescheduleAppointment({
+                id: dropInfo.event.id as Id<'appointments'>,
+                startTime: dropInfo.event.start!.getTime(),
+                endTime: dropInfo.event.end!.getTime(),
+            });
+            addToast('Appointment rescheduled successfully!', 'success');
+        } catch (error) {
+            console.error('Failed to reschedule:', error);
+            addToast('Failed to reschedule appointment.', 'error');
+            dropInfo.revert();
         }
     };
-
+    
     if (!scheduleData) {
         return <div className="p-8 text-center">Loading schedule...</div>;
     }
 
     return (
-        <div className="container mx-auto p-4 md:p-8">
-            <header className="flex flex-wrap justify-between items-center mb-6 gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-white">Weekly Schedule</h1>
-                    <p className="text-gray-400 mt-1">{weekDays[0].toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} - {weekDays[6].toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <button onClick={() => setWeekOffset(w => w - 1)} className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md">&larr; Prev</button>
-                    <button onClick={() => setWeekOffset(0)} className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md">Today</button>
-                    <button onClick={() => setWeekOffset(w => w + 1)} className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md">Next &rarr;</button>
-                </div>
-            </header>
-
-            <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
-                {weekDays.map(day => {
-                    const dayKey = day.toDateString();
-                    const dayAppointments = appointmentsByDay[dayKey] || [];
-                    const isToday = day.toDateString() === new Date().toDateString();
-
-                    return (
-                        <div key={dayKey} className={`bg-gray-800 rounded-lg p-3 ${isToday ? 'border-2 border-blue-500' : ''}`}>
-                            <h3 className={`font-bold text-center ${isToday ? 'text-blue-400' : 'text-white'}`}>{day.toLocaleDateString('en-US', { weekday: 'short' })}</h3>
-                            <p className="text-sm text-gray-400 text-center mb-4">{day.toLocaleDateString('en-US', { day: '2-digit' })}</p>
-                            <div className="space-y-2">
-                               {dayAppointments.length > 0 ? dayAppointments.map(appt => {
-                                    const job = jobs.find(j => j._id === appt.jobId);
-                                    const customer = customers.find(c => c._id === job?.customerId);
-                                    const vehicle = vehicles.find(v => v._id === job?.vehicleId);
-                                    return <AppointmentCard key={appt._id} appointment={appt} job={job} customer={customer} vehicle={vehicle} onEdit={handleOpenModal} onDelete={handleDelete} onClick={() => onViewJob(appt.jobId)} />
-                               }) : (<div className="h-20 flex items-center justify-center"><p className="text-xs text-gray-600 italic">No appointments</p></div>)}
-                            </div>
+        <>
+            <div className="container mx-auto p-4 md:p-8 h-full flex flex-col">
+                <header className="flex-shrink-0 mb-6 flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white">Schedule</h1>
+                    </div>
+                    {isAdmin && technicians.length > 0 && (
+                        <div>
+                            <label htmlFor="technicianFilterSchedule" className="sr-only">Filter by Technician</label>
+                            <select
+                                id="technicianFilterSchedule"
+                                value={technicianFilter}
+                                onChange={(e) => setTechnicianFilter(e.target.value as Id<'users'> | 'all')}
+                                className="bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:ring-primary focus:border-primary"
+                            >
+                                <option value="all">All Technicians</option>
+                                {technicians.map(tech => (
+                                <option key={tech._id} value={tech._id}>{tech.name}</option>
+                                ))}
+                            </select>
                         </div>
-                    )
-                })}
+                    )}
+                </header>
+                <div className="flex-grow">
+                    <FullCalendar
+                        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                        headerToolbar={{
+                            left: 'prev,next today',
+                            center: 'title',
+                            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                        }}
+                        initialView="timeGridWeek"
+                        editable={true}
+                        selectable={true}
+                        selectMirror={true}
+                        dayMaxEvents={true}
+                        weekends={true}
+                        events={events}
+                        dateClick={handleDateClick}
+                        eventClick={handleEventClick}
+                        eventDrop={handleEventDrop}
+                        height="100%"
+                        contentHeight="auto"
+                        slotMinTime="07:00:00"
+                        slotMaxTime="20:00:00"
+                    />
+                </div>
             </div>
-
-            <AppointmentFormModal isOpen={isModalOpen} onClose={handleCloseModal} appointmentToEdit={appointmentToEdit} jobToScheduleId={null} />
-        </div>
+            <AppointmentFormModal 
+                isOpen={isModalOpen} 
+                onClose={() => setIsModalOpen(false)} 
+                appointmentToEdit={appointmentToEdit} 
+                jobToScheduleId={null}
+                defaultStartTime={defaultStartTimeForModal}
+            />
+             <style>{`
+                .fc { 
+                    color: var(--fc-neutral-text-color, #E0E0E0);
+                }
+                .fc .fc-toolbar-title {
+                    color: #F5F5F5;
+                }
+                .fc .fc-button-primary {
+                    background-color: #3E3E3E;
+                    border-color: #5A5A5A;
+                }
+                .fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active {
+                    background-color: var(--primary-color);
+                    border-color: var(--primary-color);
+                }
+                .fc-daygrid-dot-event .fc-event-title {
+                    color: white;
+                }
+                .fc-day-today {
+                     background-color: rgba(0, 174, 152, 0.1) !important;
+                }
+                .fc-timegrid-slot-label, .fc-daygrid-day-number {
+                    color: #9E9E9E;
+                }
+                .fc-col-header-cell-cushion {
+                     color: #CCCCCC;
+                }
+                .fc-border {
+                    border-color: #3E3E3E;
+                }
+                .fc-timegrid-slot-lane {
+                     border-color: #3E3E3E;
+                }
+                 .fc-timegrid-event-harness > .fc-timegrid-event {
+                    box-shadow: none;
+                }
+            `}</style>
+        </>
     );
 };
 

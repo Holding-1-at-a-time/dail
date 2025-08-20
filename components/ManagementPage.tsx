@@ -319,7 +319,7 @@ const ManagementPage: React.FC = () => {
     const handleDeleteSupplier = (id: Id<'suppliers'>) => {
         if (window.confirm('Are you sure?')) {
             deleteSupplier({ id }).catch((err: any) => {
-                const errorMessage = typeof err.data === 'string' ? err.data : (err.data?.message || "An unexpected error occurred.");
+                const errorMessage = typeof err.data === 'string' ? err.data : (typeof (err.data as any)?.message === 'string' ? (err.data as any).message : "An unexpected error occurred.");
                 addToast(errorMessage, 'error');
             });
         }

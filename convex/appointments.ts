@@ -1,6 +1,6 @@
-
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
+import { Id } from './_generated/dataModel';
 
 const requireAuth = async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -45,11 +45,14 @@ export const getScheduleData = query({
         const customers = await Promise.all(Array.from(customerIds).map(id => ctx.db.get(id)));
         const vehicles = await Promise.all(Array.from(vehicleIds).map(id => ctx.db.get(id)));
 
+        const technicians = currentUser.role === 'admin' ? await ctx.db.query("users").collect() : [];
+
         return {
             appointmentsForCurrentUser,
             jobsForCurrentUser,
             customers: customers.filter(Boolean),
             vehicles: vehicles.filter(Boolean),
+            technicians,
         };
     }
 });
@@ -89,5 +92,17 @@ export const remove = mutation({
     handler: async (ctx, { id }) => {
         await requireAuth(ctx);
         return await ctx.db.delete(id);
+    }
+});
+
+export const reschedule = mutation({
+    args: {
+        id: v.id('appointments'),
+        startTime: v.number(),
+        endTime: v.number(),
+    },
+    handler: async (ctx, { id, startTime, endTime }) => {
+        await requireAuth(ctx);
+        return await ctx.db.patch(id, { startTime, endTime });
     }
 });

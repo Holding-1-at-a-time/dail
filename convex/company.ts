@@ -1,4 +1,5 @@
 
+
 import { v } from 'convex/values';
 import { mutation, action, query, internalMutation, ActionCtx } from './_generated/server';
 import { api, internal } from './_generated/api';
@@ -129,6 +130,30 @@ export const setStripeAccountId = internalMutation({
         await ctx.db.patch(companyId, { 
             stripeAccountId,
             stripeConnectStatus: 'in_progress',
+        });
+    }
+});
+
+export const completeOnboarding = mutation({
+    args: {
+        name: v.string(),
+        defaultLaborRate: v.number(),
+    },
+    handler: async (ctx, { name, defaultLaborRate }) => {
+        await requireAdmin(ctx);
+        const company = await ctx.db.query('company').first();
+        if (!company) {
+            throw new Error("Company profile not found.");
+        }
+        await ctx.db.patch(company._id, {
+            name,
+            defaultLaborRate,
+            onboardingCompleted: true,
+        });
+
+        await ctx.runMutation(internal.auditLog.record, {
+            action: "complete_onboarding",
+            details: { targetId: company._id, targetName: name }
         });
     }
 });

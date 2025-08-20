@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '../convex/_generated/api';
@@ -13,6 +14,7 @@ interface AppointmentFormModalProps {
   onClose: () => void;
   appointmentToEdit: Appointment | null;
   jobToScheduleId: Id<'jobs'> | null;
+  defaultStartTime?: number | null;
 }
 
 const toDateTimeLocal = (date: Date) => {
@@ -21,7 +23,7 @@ const toDateTimeLocal = (date: Date) => {
     return localISOTime;
 };
 
-const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ isOpen, onClose, appointmentToEdit, jobToScheduleId }) => {
+const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ isOpen, onClose, appointmentToEdit, jobToScheduleId, defaultStartTime }) => {
   const [jobId, setJobId] = useState<Id<'jobs'> | ''>('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -47,16 +49,19 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ isOpen, onC
             setDescription(appointmentToEdit.description || '');
             setStatus(appointmentToEdit.status);
         } else {
-            const now = new Date();
-            now.setSeconds(0, 0);
+            const defaultStart = defaultStartTime ? new Date(defaultStartTime) : new Date();
+            defaultStart.setMinutes(Math.ceil(defaultStart.getMinutes() / 15) * 15, 0, 0); // Round up to nearest 15 mins
+            
             setJobId(jobToScheduleId || '');
-            setStartTime(toDateTimeLocal(now));
-            setEndTime(toDateTimeLocal(new Date(now.getTime() + 2 * 60 * 60 * 1000)));
-            setDescription(''); setStatus('scheduled');
+            setStartTime(toDateTimeLocal(defaultStart));
+            setEndTime(toDateTimeLocal(new Date(defaultStart.getTime() + 2 * 60 * 60 * 1000))); // Default 2h duration
+            setDescription(''); 
+            setStatus('scheduled');
         }
-        setSuggestedSlots([]); setIsSuggesting(false);
+        setSuggestedSlots([]); 
+        setIsSuggesting(false);
     }
-  }, [appointmentToEdit, jobToScheduleId, isOpen]);
+  }, [appointmentToEdit, jobToScheduleId, isOpen, defaultStartTime]);
 
   const handleSuggestSlots = async () => {
     if (!jobId) {

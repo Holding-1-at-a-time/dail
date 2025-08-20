@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { SignedIn, SignedOut, useUser } from '@clerk/clerk-react';
 import { useConvexAuth, useQuery } from 'convex/react';
@@ -20,6 +21,7 @@ import AssistantPage from './components/AssistantPage';
 import { Page } from './types';
 import BookingPage from './components/BookingPage';
 import DevEnvWarning from './components/DevEnvWarning';
+import OnboardingWizard from './components/OnboardingWizard';
 
 function App() {
   const [activePage, setActivePage] = useState<Page>('dashboard');
@@ -145,6 +147,7 @@ function App() {
         <LandingPage />
       </SignedOut>
       <SignedIn>
+        {currentUser?.role === 'admin' && company && !company.onboardingCompleted && <OnboardingWizard />}
         <div className="min-h-screen bg-gray-900 text-gray-100">
           <Layout 
             activePage={activePage} 
