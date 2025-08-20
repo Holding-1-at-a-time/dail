@@ -116,7 +116,7 @@ function App() {
         return <SchedulePage currentUser={currentUser} onViewJob={handleViewJobDetail} />;
        case 'settings':
         if (currentUser.role !== 'admin') return null;
-        return <SettingsPage setActivePage={setActivePage} />;
+        return <SettingsPage />;
        case 'reports':
         if (currentUser.role !== 'admin') return null;
         return <ReportsPage />;

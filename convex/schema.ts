@@ -1,3 +1,4 @@
+
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
@@ -132,6 +133,8 @@ export default defineSchema({
     visualQuoteStatus: v.optional(v.union(v.literal('pending'), v.literal('complete'), v.literal('failed'))),
     visualQuoteStorageIds: v.optional(v.array(v.id('_storage'))),
     inventoryDebited: v.optional(v.boolean()),
+    actualStartTime: v.optional(v.number()),
+    actualEndTime: v.optional(v.number()),
   }).index('by_customer', ['customerId']).index('by_public_link_key', ['publicLinkKey']),
 
   appointments: defineTable({

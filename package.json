@@ -36,7 +36,8 @@
     "@convex-dev/action-retrier": "^0.2.1",
     "@convex-dev/workpool": "^0.1.7",
     "html5-qrcode": "2.3.8",
-    "stripe": "^18.4.0"
+    "stripe": "^18.4.0",
+    "ai": "^5.0.19"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

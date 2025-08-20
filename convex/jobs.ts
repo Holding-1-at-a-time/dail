@@ -1,3 +1,5 @@
+
+
 import { v } from 'convex/values';
 import { internalMutation, mutation, query, ActionCtx, action } from './_generated/server';
 import { Id } from './_generated/dataModel';
@@ -9,7 +11,7 @@ import { defaultPriorityWorkflowManager } from './workflows';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2024-06-20',
+    apiVersion: '2024-06-20' as Stripe.StripeConfig['apiVersion'],
 });
 
 const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
@@ -72,11 +74,13 @@ export const getDataForDetailPage = query({
 
         const signatureUrl = job.customerSignatureStorageId ? await ctx.storage.getUrl(job.customerSignatureStorageId) : null;
         
-        const companyWithLogoUrl = company 
-            ? { ...company, logoUrl: company.logoStorageId ? await ctx.storage.getUrl(company.logoStorageId) : null }
-            : null;
+        const companyWithBranding = company ? {
+            name: company.name,
+            brandColor: company.brandColor,
+            logoUrl: company.logoStorageId ? await ctx.storage.getUrl(company.logoStorageId) : null,
+        } : null;
 
-        return { job, customer, vehicle, services, checklists, photoUrls, signatureUrl, company: companyWithLogoUrl };
+        return { job, customer, vehicle, services, checklists, photoUrls, signatureUrl, company: companyWithBranding };
     }
 });
 
@@ -123,8 +127,8 @@ export const createPaymentIntent = action({
     },
     handler: async (ctx, { jobId, amount }) => {
         const company = await ctx.runQuery(api.company.get);
-        if (!company?.stripeAccountId) {
-            throw new Error("The business has not set up their payments account.");
+        if (!company?.stripeAccountId || company.stripeConnectStatus !== 'complete') {
+            throw new Error("The business has not completed their payments setup.");
         }
         
         const paymentIntent = await stripe.paymentIntents.create({
@@ -250,6 +254,8 @@ export const save = mutation({
                 customerApprovalStatus: 'pending',
                 publicLinkKey: nanoid(),
                 inventoryDebited: false,
+                actualStartTime: undefined,
+                actualEndTime: undefined,
             });
         }
         
@@ -447,5 +453,24 @@ export const approveJob = mutation({
             customerSignatureStorageId: signatureStorageId,
             approvalTimestamp: Date.now()
         });
+    }
+});
+
+export const startJob = mutation({
+    args: { jobId: v.id('jobs') },
+    handler: async (ctx, { jobId }) => {
+        await ctx.db.patch(jobId, { actualStartTime: Date.now(), status: 'workOrder' });
+    }
+});
+
+export const completeJob = mutation({
+    args: { jobId: v.id('jobs') },
+    handler: async (ctx, { jobId }) => {
+        await ctx.db.patch(jobId, { actualEndTime: Date.now(), status: 'invoice' });
+        // Trigger inventory debit
+        const company = await ctx.db.query('company').first();
+        if (company?.enableSmartInventory) {
+            await ctx.scheduler.runAfter(0, internal.inventory.debitInventoryForJob, { jobId });
+        }
     }
 });

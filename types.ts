@@ -1,3 +1,4 @@
+
 import { Doc, Id } from "./convex/_generated/dataModel";
 
 export type Service = Doc<"services"> & {

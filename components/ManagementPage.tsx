@@ -314,7 +314,7 @@ const ManagementPage: React.FC = () => {
     const handleDeleteSupplier = (id: Id<'suppliers'>) => {
         if (window.confirm('Are you sure?')) {
             deleteSupplier({ id }).catch((err: any) => {
-                const errorMessage = err?.data;
+                const errorMessage = (err as Error).message;
                 alert(errorMessage || "An unexpected error occurred.");
             });
         }

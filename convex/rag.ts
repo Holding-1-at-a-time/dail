@@ -9,6 +9,8 @@ import { ragQuestionCache } from "./cache";
 import { rateLimiter } from "./rateLimiter";
 import { Workpool } from "@convex-dev/workpool";
 import { cosineSimilarity } from "../utils/vector";
+import { generateObject } from "ai";
+import { z } from "zod";
 
 const getUserId = async (ctx: ActionCtx) => {
   const identity = await ctx.auth.getUserIdentity();
@@ -110,18 +112,13 @@ export const internalAskQuestion = internalAction({
 
     // 1. AI-Powered Query Expansion
     const expansionPrompt = `The user is asking: "${args.prompt}". Generate 3 alternative ways of asking this question to improve search results. Respond ONLY with a JSON array of strings.`;
-    const expansionResponse = await openai.chat("gpt-4o-mini").doGenerate({
-      prompt: [{ role: 'user', content: [{ type: 'text', text: expansionPrompt }] }],
-      mode: { type: 'json-object' }
+    const { object: expandedQueriesArray } = await generateObject({
+      model: openai.chat("gpt-4o-mini"),
+      prompt: expansionPrompt,
+      schema: z.array(z.string()),
     });
     
-    let expandedQueries = [args.prompt];
-    try {
-        const parsed = expansionResponse.object as unknown;
-        if (Array.isArray(parsed)) {
-            expandedQueries.push(...parsed.filter((q): q is string => typeof q === 'string'));
-        }
-    } catch (e) { console.error("Failed to parse query expansion", e); }
+    let expandedQueries = [args.prompt, ...expandedQueriesArray];
 
     // 2. Initial Retrieval (Recall)
     const searchResults = await Promise.all(
@@ -141,19 +138,17 @@ export const internalAskQuestion = internalAction({
     
     Based on the original question, which chunks are most relevant? Respond ONLY with a JSON object containing a key "ranked_indices" with an array of the indices of the top 3 most relevant chunks, in order of relevance. For example: {"ranked_indices": [2, 0, 4]}`;
     
-    const rerankResponse = await openai.chat("gpt-4o-mini").doGenerate({
-        prompt: [{ role: 'user', content: [{ type: 'text', text: rerankPrompt }] }],
-        mode: { type: 'json-object' }
+    const { object: rankedResult } = await generateObject({
+      model: openai.chat("gpt-4o-mini"),
+      prompt: rerankPrompt,
+      schema: z.object({ ranked_indices: z.array(z.number()) }),
     });
 
     let topEntries = Array.from(uniqueEntries.values()).slice(0, 3);
-    try {
-        const rankedResult = rerankResponse.object as { ranked_indices?: number[] };
-        if (rankedResult.ranked_indices && Array.isArray(rankedResult.ranked_indices)) {
-            const allEntries = Array.from(uniqueEntries.values());
-            topEntries = rankedResult.ranked_indices.map((idx: number) => allEntries[idx]).filter(Boolean);
-        }
-    } catch(e) { console.error("Failed to parse re-ranking response", e); }
+    if (rankedResult.ranked_indices && Array.isArray(rankedResult.ranked_indices)) {
+      const allEntries = Array.from(uniqueEntries.values());
+      topEntries = rankedResult.ranked_indices.map((idx: number) => allEntries[idx]).filter(Boolean);
+    }
 
 
     // 4. Final Generation

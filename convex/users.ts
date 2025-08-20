@@ -102,8 +102,8 @@ export const getDashboardData = query({
     const activeJobs = workOrderCount + invoiceCount;
     
     const oneMonthAgoTimestamp = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const lowerBoundKey: [JobStatus, number] = ['completed', oneMonthAgoTimestamp];
-    const upperBoundKey: [JobStatus, number] = ['completed', Date.now()];
+    const lowerBoundKey = ['completed', oneMonthAgoTimestamp];
+    const upperBoundKey = ['completed', Date.now()];
 
     const revenueThisMonth = await jobStats.sum(ctx, {
         namespace: undefined,

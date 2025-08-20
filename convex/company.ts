@@ -1,3 +1,5 @@
+
+
 import { v } from 'convex/values';
 import { mutation, action, query, internalMutation } from './_generated/server';
 import { api, internal } from './_generated/api';
@@ -5,7 +7,7 @@ import { Id } from './_generated/dataModel';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2024-06-20',
+    apiVersion: '2024-06-20' as Stripe.StripeConfig['apiVersion'],
 });
 
 export const get = query({
@@ -80,8 +82,8 @@ export const createStripeConnectAccount = action({
         const origin = new URL(process.env.VITE_CONVEX_URL!).origin;
         const accountLink = await stripe.accountLinks.create({
             account: accountId,
-            refresh_url: `${origin}/settings`,
-            return_url: `${origin}/settings?stripe_onboarding_complete=true`,
+            refresh_url: `${origin}/`,
+            return_url: `${origin}/`,
             type: 'account_onboarding',
         });
 
@@ -92,7 +94,9 @@ export const createStripeConnectAccount = action({
 export const createStripeDashboardLink = action({
     handler: async (ctx) => {
         const company = await ctx.runQuery(api.company.get);
-        if (!company?.stripeAccountId) throw new Error("Stripe account not connected.");
+        if (!company?.stripeAccountId || company.stripeConnectStatus !== 'complete') {
+            throw new Error("Stripe account not fully connected.");
+        }
 
         const loginLink = await stripe.accounts.createLoginLink(company.stripeAccountId);
         return loginLink.url;
