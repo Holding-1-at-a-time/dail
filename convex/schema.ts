@@ -1,4 +1,4 @@
-import { log } from 'console';
+
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
@@ -256,4 +256,3 @@ export default defineSchema({
     timestamp: v.number(),
   }).index("by_timestamp", ["timestamp"]),
 });
-

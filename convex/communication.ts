@@ -17,6 +17,36 @@ export const getHistoryForJob = query({
     }
 });
 
+// A simple HTML template for manual messages
+const manualMessageHtmlTemplate = (customerName: string, message: string, companyName: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: sans-serif; color: #333; }
+    .container { max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+    .header { font-size: 24px; font-weight: bold; color: #00AE98; }
+    .content { margin-top: 20px; }
+    .footer { margin-top: 30px; font-size: 12px; color: #888; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">${companyName}</div>
+    <div class="content">
+      <p>Hi ${customerName},</p>
+      <p>You have a new message regarding your service:</p>
+      <pre style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; white-space: pre-wrap; font-family: sans-serif;">${message}</pre>
+    </div>
+    <div class="footer">
+      <p>This is a message from your auto detailing provider.</p>
+    </div>
+  </div>
+</body>
+</html>
+`;
+
+
 // --- MANUAL MESSAGING ---
 
 export const sendManualEmail = action({
@@ -31,13 +61,37 @@ export const sendManualEmail = action({
         const customer = await ctx.runQuery(internal.workflows.getCustomer, { id: job.customerId });
         if (!customer) throw new Error("Customer not found");
 
-        // In a real app, you would integrate an email service like Resend or SendGrid here.
-        console.log(`--- SIMULATING EMAIL ---
-        To: ${customer.email}
-        Subject: Regarding your service (Job #${job._id.slice(-6)})
-        
-        ${message}
-        -----------------------`);
+        const company = await ctx.runQuery(api.company.get);
+        const fromEmail = process.env.EMAIL_FROM_ADDRESS;
+        const apiKey = process.env.EMAIL_API_KEY;
+
+        if (!fromEmail || !apiKey) {
+            console.error("Email environment variables (EMAIL_FROM_ADDRESS, EMAIL_API_KEY) are not set. Skipping email send.");
+            throw new Error("Email service is not configured on the backend.");
+        }
+
+        const subject = `Message regarding your service (Job #${job._id.slice(-6)})`;
+        const htmlBody = manualMessageHtmlTemplate(customer.name, message, company?.name || 'Detailing Pro');
+
+        const response = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                from: fromEmail,
+                to: customer.email,
+                subject: subject,
+                html: htmlBody,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorBody = await response.text();
+            console.error("Failed to send manual email:", errorBody);
+            throw new Error(`Email service failed: ${errorBody}`);
+        }
         
         await ctx.runMutation(internal.communication.logMessage, {
             jobId,

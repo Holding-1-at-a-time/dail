@@ -134,7 +134,7 @@ export const internalAskQuestion = internalAction({
     const rerankPrompt = `Original Question: "${args.prompt}"
     
     Candidate Chunks:
-    ${Array.from(uniqueEntries.values()).map((entry, idx) => `[${idx}] ${entry.content.map(c => c.text).join(" ")}`).join("\n\n")}
+    ${Array.from(uniqueEntries.values()).map((entry: any, idx) => `[${idx}] ${entry.content.map((c: any) => c.text).join(" ")}`).join("\n\n")}
     
     Based on the original question, which chunks are most relevant? Respond ONLY with a JSON object containing a key "ranked_indices" with an array of the indices of the top 3 most relevant chunks, in order of relevance. For example: {"ranked_indices": [2, 0, 4]}`;
     

@@ -277,6 +277,34 @@ export const createJobAndAppointment = internalMutation({
 // 4. SEND CAMPAIGN WORKFLOW (Low Priority)
 // =================================================================
 
+// HTML template for marketing campaigns
+const campaignHtmlTemplate = (body: string, companyName: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: sans-serif; color: #333; }
+    .container { max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+    .header { font-size: 24px; font-weight: bold; color: #00AE98; text-align: center; margin-bottom: 20px;}
+    .content { margin-top: 20px; white-space: pre-wrap; }
+    .footer { margin-top: 30px; font-size: 12px; color: #888; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">${companyName}</div>
+    <div class="content">
+      ${body.replace(/\n/g, '<br />')}
+    </div>
+    <div class="footer">
+      <p>To unsubscribe from these emails, please contact us.</p>
+      <p>${companyName}</p>
+    </div>
+  </div>
+</body>
+</html>
+`;
+
 export const sendCampaignWorkflow = lowPriorityWorkflowManager.define({
     args: { campaignId: v.id('campaigns') },
     handler: async (step, { campaignId }) => {
@@ -308,16 +336,40 @@ export const getAllCustomers = internalQuery({
 
 export const sendSingleEmail = internalAction({
     args: { to: v.string(), subject: v.string(), body: v.string() },
-    handler: async (_, { to, subject, body }) => {
-        // In a real app, this would use an email service like Resend or SendGrid.
-        console.log(`--- SIMULATING CAMPAIGN EMAIL ---
-        To: ${to}
-        Subject: ${subject}
+    handler: async (ctx, { to, subject, body }) => {
+        const fromEmail = process.env.EMAIL_FROM_ADDRESS;
+        const apiKey = process.env.EMAIL_API_KEY;
+        const company = await ctx.runQuery(api.company.get);
+
+        if (!fromEmail || !apiKey) {
+            console.error(`Email environment variables not set. Simulating campaign email to ${to}.`);
+            return;
+        }
+
+        const htmlBody = campaignHtmlTemplate(body, company?.name || 'Detailing Pro');
+
+        const response = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                from: fromEmail,
+                to: to,
+                subject: subject,
+                html: htmlBody,
+            }),
+        });
         
-        ${body}
-        ---------------------------------`);
-        // Simulate network request
-        await new Promise(resolve => setTimeout(resolve, 100));
+        if (!response.ok) {
+            const errorBody = await response.text();
+            console.error(`Failed to send campaign email to ${to}:`, errorBody);
+            // Don't throw here to allow other emails in the campaign to proceed.
+        }
+        
+        // Add a small delay to avoid overwhelming the email service provider.
+        await new Promise(resolve => setTimeout(resolve, 200));
     }
 });
 
@@ -342,6 +394,39 @@ export const handleCampaignSentCompletion = internalMutation({
 // 5. APPOINTMENT REMINDER WORKFLOW (High Priority)
 // =================================================================
 
+// HTML template for appointment reminders
+const reminderHtmlTemplate = (customerName: string, appointmentTime: string, companyName: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: sans-serif; color: #333; }
+    .container { max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+    .header { font-size: 24px; font-weight: bold; color: #00AE98; }
+    .content { margin-top: 20px; }
+    .highlight { background-color: #f0f8ff; padding: 15px; border-radius: 5px; font-size: 18px; text-align: center; font-weight: bold;}
+    .footer { margin-top: 30px; font-size: 12px; color: #888; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">Appointment Reminder</div>
+    <div class="content">
+      <p>Hi ${customerName},</p>
+      <p>This is a friendly reminder of your upcoming auto detailing appointment with ${companyName}.</p>
+      <div class="highlight">
+        ${appointmentTime}
+      </div>
+      <p>We look forward to seeing you!</p>
+    </div>
+    <div class="footer">
+      <p>If you need to reschedule, please contact us as soon as possible.</p>
+    </div>
+  </div>
+</body>
+</html>
+`;
+
 export const appointmentReminderWorkflow = highPriorityWorkflowManager.define({
     args: { appointmentId: v.id('appointments') },
     handler: async (step, { appointmentId }): Promise<void> => {
@@ -363,22 +448,49 @@ export const sendAndLogReminderEmailAction = internalAction({
         const customer = await ctx.runQuery(internal.workflows.getCustomer, { id: job.customerId });
         if (!customer) return;
 
-        const reminderMessage = `Hi ${customer.name},\n\nThis is a friendly reminder of your upcoming auto detailing appointment scheduled for ${new Date(appointment.startTime).toLocaleString()}.\n\nWe look forward to seeing you!\n\n- Detailing Pro`;
-        
-        // In a real app, you would integrate an email service here.
-        console.log(`--- SIMULATING REMINDER EMAIL ---
-        To: ${customer.email}
-        Subject: Appointment Reminder
-        
-        ${reminderMessage}
-        ---------------------------------`);
-        // Simulate network request
-        await new Promise(resolve => setTimeout(resolve, 500));
+        const fromEmail = process.env.EMAIL_FROM_ADDRESS;
+        const apiKey = process.env.EMAIL_API_KEY;
+        const company = await ctx.runQuery(api.company.get);
+
+        if (!fromEmail || !apiKey) {
+            console.error("Email environment variables not set. Cannot send reminder.");
+            // Return instead of throwing to prevent infinite retries if config is missing.
+            // The appointment will be picked up by the next cron run if it's still due.
+            return;
+        }
+
+        const appointmentTime = new Date(appointment.startTime).toLocaleString([], {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+        const reminderMessage = `Hi ${customer.name},\n\nThis is a friendly reminder of your upcoming auto detailing appointment scheduled for ${appointmentTime}.\n\nWe look forward to seeing you!\n\n- ${company?.name || 'Detailing Pro'}`;
+        const htmlBody = reminderHtmlTemplate(customer.name, appointmentTime, company?.name || 'Detailing Pro');
+
+        const response = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                from: fromEmail,
+                to: customer.email,
+                subject: "Your Upcoming Detailing Appointment",
+                html: htmlBody,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorBody = await response.text();
+            console.error(`Failed to send reminder email for appointment ${appointmentId}:`, errorBody);
+            // Throw an error to allow the workflow retrier to handle it.
+            throw new Error(`Email service failed: ${errorBody}`);
+        }
         
         await ctx.runMutation(internal.communication.logMessage, {
             jobId: job._id,
             content: reminderMessage,
             type: 'automated_reminder',
+            appointmentIdToUpdate: appointmentId,
         });
     }
 });
@@ -393,10 +505,10 @@ export const handleReminderCompletion = internalMutation({
         const { appointmentId } = context;
         if (result.kind === 'error' || result.kind === 'canceled') {
             console.error(`Sending reminder for appointment ${appointmentId} failed:`, result.kind === 'error' ? result.error : 'Canceled');
-            // Optionally clear the workflowId to allow retry on the next cron run
-            // await ctx.db.patch(appointmentId, { reminderWorkflowId: undefined });
+            // We don't mark as sent, so the cron can try again later if the failure was temporary.
         } else {
-            await ctx.db.patch(appointmentId, { reminderSentAt: Date.now() });
+            // Success is handled inside the action by calling logMessage which patches the appointment.
+            // This completion handler is mainly for logging failures.
         }
     }
 });
