@@ -46,6 +46,7 @@ import type * as services from "../services.js";
 import type * as subscriptions from "../subscriptions.js";
 import type * as suppliers from "../suppliers.js";
 import type * as users from "../users.js";
+import type * as whiteLabel from "../whiteLabel.js";
 import type * as workflows from "../workflows.js";
 
 /**
@@ -90,6 +91,7 @@ declare const fullApi: ApiFromModules<{
   subscriptions: typeof subscriptions;
   suppliers: typeof suppliers;
   users: typeof users;
+  whiteLabel: typeof whiteLabel;
   workflows: typeof workflows;
 }>;
 export declare const api: FilterApi<

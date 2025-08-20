@@ -1,9 +1,8 @@
 import { RateLimiter, MINUTE, HOUR } from "@convex-dev/rate-limiter";
 import { api } from "./_generated/api";
-import { QueryCtx } from "./_generated/server";
 
 // Helper to get the user ID for per-user rate limiting.
-const getUserId = async (ctx: { auth: { getUserIdentity: () => Promise<any | null> } }) => {
+const getUserId = async (ctx: any) => {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) {
     throw new Error("Rate limiting requires authentication.");
@@ -30,3 +29,4 @@ export const { getRateLimit, getServerTime } = rateLimiter.hookAPI(
   "assistant",
   { key: async (ctx) => getUserId(ctx) }
 );
+

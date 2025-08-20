@@ -1,12 +1,12 @@
 // convex/convex.config.ts
 import { defineApp } from "convex/server";
-import rag from "@convex-dev/rag/server";
-import actionCache from "@convex-dev/action-cache/server";
-import aggregate from "@convex-dev/aggregate/server";
-import agent from "@convex-dev/agent/server";
-import rateLimiter from "@convex-dev/rate-limiter/server";
-import workflow from "@convex-dev/workflow/server";
-import workpool from "@convex-dev/workpool/server";
+import rag from "@convex-dev/rag/convex.config";
+import actionCache from "@convex-dev/action-cache/convex.config";
+import aggregate from "@convex-dev/aggregate/convex.config";
+import agent from "@convex-dev/agent/convex.config";
+import rateLimiter from "@convex-dev/rate-limiter/convex.config";
+import workflow from "@convex-dev/workflow/convex.config";
+import workpool from "@convex-dev/workpool/convex.config";
 
 const app = defineApp();
 app.use(rag);
