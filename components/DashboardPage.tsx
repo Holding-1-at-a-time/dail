@@ -7,6 +7,7 @@ import { User } from '../types';
 import JobFormModal from './JobFormModal';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from 'chart.js';
+import EmptyState from './EmptyState';
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
@@ -89,7 +90,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onViewJob })
                 <StatCard 
                     title={isAdmin ? "Active Jobs" : "My Active Jobs"} 
                     value={stats.activeJobs.toString()} 
-                    icon={<BriefcaseIcon className="w-6 h-6 text-blue-400" />} 
+                    icon={<BriefcaseIcon className="w-6 h-6 text-primary" />} 
                 />
                 {isAdmin && (
                     <>
@@ -119,47 +120,53 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onViewJob })
 
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className={`${isAdmin ? 'lg:col-span-3' : 'lg:col-span-5'}`}>
-                    <div className="bg-gray-800 rounded-lg shadow-lg p-6 h-full">
+                    <div className="bg-gray-800 rounded-lg shadow-lg p-6 h-full flex flex-col">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-xl font-bold text-white">{isAdmin ? "Recent Activity" : "My Assigned Jobs"}</h2>
                             <button
                                 onClick={() => setIsJobModalOpen(true)}
-                                className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105"
+                                className="flex items-center bg-primary hover:opacity-90 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105"
                             >
                                 <PlusIcon className="w-5 h-5 mr-2" />
                                 Create New Job
                             </button>
                         </div>
-                        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
-                            {jobsForDashboard.length > 0 ? jobsForDashboard.map(job => {
-                                const { customer, vehicle } = job;
-                                const statusColor = {
-                                    estimate: 'border-yellow-500', workOrder: 'border-blue-500', invoice: 'border-purple-500',
-                                    completed: 'border-green-500', cancelled: 'border-gray-600',
-                                };
-                                return (
-                                    <button 
-                                        key={job._id} 
-                                        onClick={() => onViewJob(job._id)} 
-                                        className={`w-full text-left p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors border-l-4 ${statusColor[job.status]}`}
-                                    >
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <p className="font-semibold text-white">{customer?.name}</p>
-                                                <p className="text-sm text-gray-400">{vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : 'Unknown Vehicle'}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="font-mono text-lg text-blue-400">${job.totalAmount.toFixed(2)}</p>
-                                                <p className="text-xs text-gray-400 capitalize">{job.status}</p>
-                                            </div>
-                                        </div>
-                                    </button>
-                                );
-                            }) : (
-                                <div className="text-center py-12 flex flex-col items-center justify-center h-full">
-                                    <BriefcaseIcon className="w-12 h-12 text-gray-600 mb-4"/>
-                                    <p className="text-gray-500">{isAdmin ? "No recent jobs to display." : "You have no assigned jobs."}</p>
+                        <div className="flex-grow">
+                            {jobsForDashboard.length > 0 ? (
+                                <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+                                    {jobsForDashboard.map(job => {
+                                        const { customer, vehicle } = job;
+                                        const statusColor = {
+                                            estimate: 'border-yellow-500', workOrder: 'border-blue-500', invoice: 'border-purple-500',
+                                            completed: 'border-green-500', cancelled: 'border-gray-600',
+                                        };
+                                        return (
+                                            <button 
+                                                key={job._id} 
+                                                onClick={() => onViewJob(job._id)} 
+                                                className={`w-full text-left p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors border-l-4 ${statusColor[job.status]}`}
+                                            >
+                                                <div className="flex justify-between items-center">
+                                                    <div>
+                                                        <p className="font-semibold text-white">{customer?.name}</p>
+                                                        <p className="text-sm text-gray-400">{vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : 'Unknown Vehicle'}</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="font-mono text-lg text-primary">${job.totalAmount.toFixed(2)}</p>
+                                                        <p className="text-xs text-gray-400 capitalize">{job.status}</p>
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
+                            ) : (
+                                <EmptyState
+                                  icon={<BriefcaseIcon className="w-12 h-12 text-gray-600" />}
+                                  title={isAdmin ? "No Recent Jobs" : "No Assigned Jobs"}
+                                  message={isAdmin ? "When you create a new job, it will appear here." : "Your assigned jobs for the day will be listed here."}
+                                  action={isAdmin ? { label: "Create First Job", onClick: () => setIsJobModalOpen(true) } : undefined}
+                                />
                             )}
                         </div>
                     </div>

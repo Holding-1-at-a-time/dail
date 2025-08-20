@@ -1,19 +1,19 @@
 import { v } from "convex/values";
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
-import { api, components, internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { GoogleGenAI } from "@google/genai";
 import { WorkflowManager, vWorkflowId } from "@convex-dev/workflow";
 import { jobStats } from "./aggregates";
 
 // --- Workflow Managers for different priority levels ---
-export const highPriorityWorkflowManager = new WorkflowManager(components.highPriorityWorkflow, {
+export const highPriorityWorkflowManager = new WorkflowManager(api.highPriorityWorkflow, {
     workpoolOptions: { maxParallelism: 10 }
 });
-export const defaultPriorityWorkflowManager = new WorkflowManager(components.defaultPriorityWorkflow, {
+export const defaultPriorityWorkflowManager = new WorkflowManager(api.defaultPriorityWorkflow, {
     workpoolOptions: { maxParallelism: 5 }
 });
-export const lowPriorityWorkflowManager = new WorkflowManager(components.lowPriorityWorkflow, {
+export const lowPriorityWorkflowManager = new WorkflowManager(api.lowPriorityWorkflow, {
     workpoolOptions: { maxParallelism: 3 }
 });
 

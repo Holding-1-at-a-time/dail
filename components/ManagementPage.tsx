@@ -15,6 +15,7 @@ import AppointmentFormModal from './AppointmentFormModal';
 import SupplierFormModal from './SupplierFormModal';
 import SubscriptionFormModal from './SubscriptionFormModal';
 import SubscriptionCard from './SubscriptionCard';
+import EmptyState from './EmptyState';
 
 type ManagementTab = 'jobs' | 'customers' | 'services' | 'pricing' | 'upcharges' | 'checklists' | 'suppliers' | 'subscriptions';
 
@@ -29,7 +30,7 @@ const TabButton: React.FC<{
         onClick={() => setActiveTab(tab)}
         className={`flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
             activeTab === tab 
-            ? 'bg-blue-600 text-white' 
+            ? 'bg-primary text-white' 
             : 'text-gray-300 hover:bg-gray-700 hover:text-white'
         }`}
     >
@@ -46,11 +47,11 @@ const ServiceCard: React.FC<{
     onEdit: (service: Service) => void;
     onDelete: (serviceId: Id<'services'>) => void;
 }> = ({ service, allServices, appliedMatrices, hasChecklist, onEdit, onDelete }) => (
-    <div className="bg-gray-800 rounded-lg shadow-lg p-5 flex flex-col justify-between hover:shadow-blue-500/20 hover:-translate-y-1 transition-all duration-300">
+    <div className="bg-gray-800 rounded-lg shadow-lg p-5 flex flex-col justify-between hover:shadow-primary/20 hover:-translate-y-1 transition-all duration-300">
         <div>
             <div className="flex justify-between items-start">
                 <h3 className="text-lg font-bold text-white pr-4">{service.name}</h3>
-                <span className="text-xl font-semibold text-blue-400">${service.basePrice}</span>
+                <span className="text-xl font-semibold text-primary">${service.basePrice}</span>
             </div>
             <div className="flex items-center space-x-4 mt-2 mb-3">
                 {service.isPackage && <div className="flex items-center text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded-full"><PackageIcon className="w-4 h-4 mr-1" />Package</div>}
@@ -84,7 +85,7 @@ const PricingMatrixCard: React.FC<{ matrix: PricingMatrix; allServices: Service[
             <h3 className="text-lg font-bold text-white mb-3">{matrix.name}</h3>
             <div className="mb-4">
                 <h4 className="text-xs font-semibold uppercase text-gray-500 mb-2">Rules</h4>
-                <ul className="space-y-1 text-sm">{matrix.rules.map(rule => (<li key={rule.id} className="flex justify-between items-center bg-gray-700/40 px-2 py-1 rounded-md"><span>{rule.factor}</span><span className="font-mono text-blue-300">{rule.adjustmentType === 'percentage' ? `${rule.adjustmentValue}%` : `$${rule.adjustmentValue.toFixed(2)}`}</span></li>))}</ul>
+                <ul className="space-y-1 text-sm">{matrix.rules.map(rule => (<li key={rule.id} className="flex justify-between items-center bg-gray-700/40 px-2 py-1 rounded-md"><span>{rule.factor}</span><span className="font-mono text-primary">{rule.adjustmentType === 'percentage' ? `${rule.adjustmentValue}%` : `$${rule.adjustmentValue.toFixed(2)}`}</span></li>))}</ul>
             </div>
             <div className="mb-4">
                 <h4 className="text-xs font-semibold uppercase text-gray-500 mb-2">Applied to {matrix.appliesToServiceIds.length} Service(s)</h4>
@@ -103,7 +104,7 @@ const UpchargeCard: React.FC<{ upcharge: Upcharge; onEdit: (upcharge: Upcharge) 
         <div>
             <div className="flex justify-between items-start">
                 <h3 className="text-lg font-bold text-white pr-4">{upcharge.name}</h3>
-                <span className="text-xl font-semibold text-blue-400">{upcharge.isPercentage ? `${upcharge.defaultAmount}%` : `$${upcharge.defaultAmount.toFixed(2)}`}</span>
+                <span className="text-xl font-semibold text-primary">{upcharge.isPercentage ? `${upcharge.defaultAmount}%` : `$${upcharge.defaultAmount.toFixed(2)}`}</span>
             </div>
             <p className="text-gray-400 text-sm mt-2 mb-4">{upcharge.description}</p>
         </div>
@@ -120,7 +121,7 @@ const ChecklistCard: React.FC<{ checklist: Checklist; allServices: Service[]; on
         <div className="bg-gray-800 rounded-lg shadow-lg p-5 flex flex-col justify-between">
             <div>
                 <h3 className="text-lg font-bold text-white mb-2">{checklist.name}</h3>
-                {associatedService && (<div className="mb-4"><span className="text-xs font-semibold uppercase text-gray-500 mr-2">APPLIES TO:</span><span className="text-sm text-blue-300 bg-gray-700/50 px-2 py-1 rounded">{associatedService.name}</span></div>)}
+                {associatedService && (<div className="mb-4"><span className="text-xs font-semibold uppercase text-gray-500 mr-2">APPLIES TO:</span><span className="text-sm text-primary bg-gray-700/50 px-2 py-1 rounded">{associatedService.name}</span></div>)}
                 <div className="mb-4">
                     <h4 className="text-xs font-semibold uppercase text-gray-500 mb-2">Tasks ({checklist.tasks.length})</h4>
                     <ul className="space-y-1 text-sm list-disc list-inside text-gray-400 max-h-32 overflow-y-auto pr-2">{checklist.tasks.map((task, index) => (<li key={index} className="truncate">{task}</li>))}</ul>
@@ -194,7 +195,7 @@ const JobCard: React.FC<{ job: Job; customer: Customer | undefined; vehicle: Veh
                     </div>
                 </div>
                 <div className="mt-4 pt-4 border-t border-gray-700/50">
-                    <div className="flex justify-between items-baseline"><h4 className="text-sm font-semibold text-gray-300">Total:</h4><span className="text-2xl font-bold text-blue-400">${job.totalAmount.toFixed(2)}</span></div>
+                    <div className="flex justify-between items-baseline"><h4 className="text-sm font-semibold text-gray-300">Total:</h4><span className="text-2xl font-bold text-primary">${job.totalAmount.toFixed(2)}</span></div>
                     <div className="flex justify-between items-baseline mt-2"><h4 className="text-sm font-semibold text-gray-300">Paid:</h4><span className={`text-lg font-semibold ${paymentStatusColors[job.paymentStatus]}`}>${job.paymentReceived.toFixed(2)}</span></div>
                     <div className="flex justify-between items-baseline mt-1"><h4 className="text-xs text-gray-500">Created:</h4><span className="text-xs text-gray-400">{new Date(job.estimateDate).toLocaleDateString()}</span></div>
                 </div>
@@ -312,7 +313,7 @@ const ManagementPage: React.FC = () => {
     const handleDeleteJob = (id: Id<'jobs'>) => window.confirm('Are you sure?') && deleteJob({ id });
     const handleDeleteSupplier = (id: Id<'suppliers'>) => {
         if (window.confirm('Are you sure?')) {
-            deleteSupplier({ id }).catch((err: any) => alert(err.data || "An unexpected error occurred."));
+            deleteSupplier({ id }).catch((err: unknown) => alert(String((err as any)?.data) || "An unexpected error occurred."));
         }
     };
 
@@ -338,21 +339,86 @@ const ManagementPage: React.FC = () => {
     const renderContent = () => {
         switch(activeTab) {
             case 'jobs':
-                return <section id="jobs"><header className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-white">Job Management</h2><button onClick={() => { setJobToEdit(null); setIsJobModalOpen(true); }} className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg"><BriefcaseIcon className="w-5 h-5 mr-2" />Create New Job</button></header><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{jobs.map(job => (<JobCard key={job._id} job={job} customer={customers.find(c => c._id === job.customerId)} vehicle={vehicles.find(v => v._id === job.vehicleId)} isScheduled={scheduledJobIds.has(job._id)} onEdit={(j) => {setJobToEdit(j); setIsJobModalOpen(true);}} onDelete={handleDeleteJob} onConvertToWorkOrder={convertToWorkOrder} onGenerateInvoice={generateInvoice} onRecordPayment={(j) => {setJobForPayment(j); setIsPaymentModalOpen(true);}} onSchedule={(id) => {setJobToScheduleId(id); setIsAppointmentModalOpen(true);}} onShare={handleShareJobLink}/>))}</div></section>;
+                return (
+                    <section id="jobs">
+                        {jobs.length > 0 ? (
+                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{jobs.map(job => (<JobCard key={job._id} job={job} customer={customers.find(c => c._id === job.customerId)} vehicle={vehicles.find(v => v._id === job.vehicleId)} isScheduled={scheduledJobIds.has(job._id)} onEdit={(j) => {setJobToEdit(j); setIsJobModalOpen(true);}} onDelete={handleDeleteJob} onConvertToWorkOrder={convertToWorkOrder} onGenerateInvoice={generateInvoice} onRecordPayment={(j) => {setJobForPayment(j); setIsPaymentModalOpen(true);}} onSchedule={(id) => {setJobToScheduleId(id); setIsAppointmentModalOpen(true);}} onShare={handleShareJobLink}/>))}</div>
+                        ) : (
+                            <EmptyState icon={<BriefcaseIcon className="w-12 h-12 text-gray-600"/>} title="No Jobs Yet" message="Create your first job to get started." action={{ label: "Create New Job", onClick: () => { setJobToEdit(null); setIsJobModalOpen(true); }}}/>
+                        )}
+                    </section>
+                );
             case 'customers':
-                return <section id="customers"><header className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-white">Customer Management</h2><button onClick={() => {setCustomerToEdit(null); setIsCustomerModalOpen(true);}} className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg"><UserGroupIcon className="w-5 h-5 mr-2" />Add Customer</button></header><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{customers.map(customer => (<CustomerCard key={customer._id} customer={customer} vehicles={vehiclesByCustomer[customer._id] || []} onEdit={(c) => {setCustomerToEdit(c); setIsCustomerModalOpen(true);}} onDelete={handleDeleteCustomer}/>))}</div></section>;
+                return (
+                    <section id="customers">
+                         {customers.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{customers.map(customer => (<CustomerCard key={customer._id} customer={customer} vehicles={vehiclesByCustomer[customer._id] || []} onEdit={(c) => {setCustomerToEdit(c); setIsCustomerModalOpen(true);}} onDelete={handleDeleteCustomer}/>))}</div>
+                         ) : (
+                             <EmptyState icon={<UserGroupIcon className="w-12 h-12 text-gray-600"/>} title="No Customers" message="Add your first customer to their information here." action={{ label: "Add Customer", onClick: () => {setCustomerToEdit(null); setIsCustomerModalOpen(true);}}}/>
+                         )}
+                    </section>
+                );
             case 'services':
-                 return <section id="services"><header className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-white">Service Management</h2><button onClick={() => {setServiceToEdit(null); setIsServiceModalOpen(true);}} className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg"><PlusIcon className="w-5 h-5 mr-2" />Add Service</button></header><div className="mb-8 p-4 bg-gray-800 rounded-lg relative"><input type="text" placeholder="Search services..." value={serviceSearchQuery} onChange={e => setServiceSearchQuery(e.target.value)} className="w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 pl-10 text-white"/><SearchIcon className="w-5 h-5 text-gray-400 absolute left-7 top-1/2 -translate-y-1/2" /></div><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{(displayedServices || []).map(service => (<ServiceCard key={service._id} service={service} allServices={services} appliedMatrices={pricingMatrices.filter(m => m.appliesToServiceIds.includes(service._id))} hasChecklist={checklists.some(c => c.serviceId === service._id)} onEdit={(s) => {setServiceToEdit(s); setIsServiceModalOpen(true);}} onDelete={handleDeleteService}/>))}</div></section>;
+                 return (
+                    <section id="services">
+                        <div className="mb-8 p-4 bg-gray-800 rounded-lg relative"><input type="text" placeholder="Search services..." value={serviceSearchQuery} onChange={e => setServiceSearchQuery(e.target.value)} className="w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 pl-10 text-white"/><SearchIcon className="w-5 h-5 text-gray-400 absolute left-7 top-1/2 -translate-y-1/2" /></div>
+                        {(displayedServices || []).length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{(displayedServices || []).map(service => (<ServiceCard key={service._id} service={service} allServices={services} appliedMatrices={pricingMatrices.filter(m => m.appliesToServiceIds.includes(service._id))} hasChecklist={checklists.some(c => c.serviceId === service._id)} onEdit={(s) => {setServiceToEdit(s); setIsServiceModalOpen(true);}} onDelete={handleDeleteService}/>))}</div>
+                        ) : (
+                            <EmptyState icon={<PackageIcon className="w-12 h-12 text-gray-600"/>} title="No Services Found" message="Create services and packages for your customers." action={{ label: "Add Service", onClick: () => {setServiceToEdit(null); setIsServiceModalOpen(true);}}}/>
+                        )}
+                    </section>
+                 );
             case 'pricing':
-                return <section id="pricing"><header className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-white">Pricing Matrices</h2><button onClick={() => {setMatrixToEdit(null); setIsMatrixModalOpen(true);}} className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg"><CalculatorIcon className="w-5 h-5 mr-2" />Add Matrix</button></header><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{pricingMatrices.map(matrix => (<PricingMatrixCard key={matrix._id} matrix={matrix} allServices={services} onEdit={(m) => {setMatrixToEdit(m); setIsMatrixModalOpen(true);}} onDelete={handleDeleteMatrix}/>))}</div></section>;
+                return (
+                    <section id="pricing">
+                        {pricingMatrices.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{pricingMatrices.map(matrix => (<PricingMatrixCard key={matrix._id} matrix={matrix} allServices={services} onEdit={(m) => {setMatrixToEdit(m); setIsMatrixModalOpen(true);}} onDelete={handleDeleteMatrix}/>))}</div>
+                        ) : (
+                            <EmptyState icon={<CalculatorIcon className="w-12 h-12 text-gray-600"/>} title="No Pricing Matrices" message="Create rules to automatically adjust service prices based on factors like vehicle size." action={{ label: "Add Matrix", onClick: () => {setMatrixToEdit(null); setIsMatrixModalOpen(true);}}}/>
+                        )}
+                    </section>
+                );
             case 'upcharges':
-                return <section id="upcharges"><header className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-white">Upcharges</h2><button onClick={() => {setUpchargeToEdit(null); setIsUpchargeModalOpen(true);}} className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg"><UpchargeIcon className="w-5 h-5 mr-2" />Add Upcharge</button></header><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{upcharges.map(upcharge => (<UpchargeCard key={upcharge._id} upcharge={upcharge} onEdit={(u) => {setUpchargeToEdit(u); setIsUpchargeModalOpen(true);}} onDelete={handleDeleteUpcharge}/>))}</div></section>;
+                return (
+                    <section id="upcharges">
+                        {upcharges.length > 0 ? (
+                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{upcharges.map(upcharge => (<UpchargeCard key={upcharge._id} upcharge={upcharge} onEdit={(u) => {setUpchargeToEdit(u); setIsUpchargeModalOpen(true);}} onDelete={handleDeleteUpcharge}/>))}</div>
+                        ) : (
+                            <EmptyState icon={<UpchargeIcon className="w-12 h-12 text-gray-600"/>} title="No Upcharges" message="Define common upcharges like 'Excessive Pet Hair' to easily add them to jobs." action={{ label: "Add Upcharge", onClick: () => {setUpchargeToEdit(null); setIsUpchargeModalOpen(true);}}}/>
+                        )}
+                    </section>
+                );
             case 'checklists':
-                return <section id="checklists"><header className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-white">Checklists</h2><button onClick={() => {setChecklistToEdit(null); setIsChecklistModalOpen(true);}} className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg"><ChecklistIcon className="w-5 h-5 mr-2" />Add Checklist</button></header><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{checklists.map(checklist => (<ChecklistCard key={checklist._id} checklist={checklist} allServices={services} onEdit={(c) => {setChecklistToEdit(c); setIsChecklistModalOpen(true);}} onDelete={handleDeleteChecklist}/>))}</div></section>;
+                return (
+                    <section id="checklists">
+                        {checklists.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{checklists.map(checklist => (<ChecklistCard key={checklist._id} checklist={checklist} allServices={services} onEdit={(c) => {setChecklistToEdit(c); setIsChecklistModalOpen(true);}} onDelete={handleDeleteChecklist}/>))}</div>
+                        ) : (
+                             <EmptyState icon={<ChecklistIcon className="w-12 h-12 text-gray-600"/>} title="No Checklists" message="Create procedural checklists for your services to ensure quality and consistency." action={{ label: "Add Checklist", onClick: () => {setChecklistToEdit(null); setIsChecklistModalOpen(true);}}}/>
+                        )}
+                    </section>
+                );
             case 'suppliers':
-                return <section id="suppliers"><header className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-white">Supplier Management</h2><button onClick={() => {setSupplierToEdit(null); setIsSupplierModalOpen(true);}} className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg"><BuildingStorefrontIcon className="w-5 h-5 mr-2" />Add Supplier</button></header><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{suppliers.map(supplier => (<SupplierCard key={supplier._id} supplier={supplier} products={productsBySupplier[supplier._id] || []} onEdit={(s) => {setSupplierToEdit(s); setIsSupplierModalOpen(true);}} onDelete={handleDeleteSupplier}/>))}</div></section>;
+                return (
+                    <section id="suppliers">
+                        {suppliers.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{suppliers.map(supplier => (<SupplierCard key={supplier._id} supplier={supplier} products={productsBySupplier[supplier._id] || []} onEdit={(s) => {setSupplierToEdit(s); setIsSupplierModalOpen(true);}} onDelete={handleDeleteSupplier}/>))}</div>
+                        ) : (
+                            <EmptyState icon={<BuildingStorefrontIcon className="w-12 h-12 text-gray-600"/>} title="No Suppliers" message="Add your product suppliers to keep your inventory organized." action={{ label: "Add Supplier", onClick: () => {setSupplierToEdit(null); setIsSupplierModalOpen(true);}}}/>
+                        )}
+                    </section>
+                );
              case 'subscriptions':
-                return <section id="subscriptions"><header className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-white">Recurring Subscriptions</h2><button onClick={() => {setSubscriptionToEdit(null); setIsSubscriptionModalOpen(true);}} className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg"><RefreshIcon className="w-5 h-5 mr-2" />New Subscription</button></header><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{subscriptions.map(sub => (<SubscriptionCard key={sub._id} subscription={sub} customerName={customerMap.get(sub.customerId)} serviceNames={sub.serviceIds.map(id => serviceMap.get(id) || '')} onEdit={(s) => {setSubscriptionToEdit(s); setIsSubscriptionModalOpen(true);}}/>))}</div></section>;
+                return (
+                    <section id="subscriptions">
+                        {subscriptions.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{subscriptions.map(sub => (<SubscriptionCard key={sub._id} subscription={sub} customerName={customerMap.get(sub.customerId)} serviceNames={sub.serviceIds.map(id => serviceMap.get(id) || '')} onEdit={(s) => {setSubscriptionToEdit(s); setIsSubscriptionModalOpen(true);}}/>))}</div>
+                        ) : (
+                            <EmptyState icon={<RefreshIcon className="w-12 h-12 text-gray-600"/>} title="No Subscriptions" message="Create recurring service plans for your customers to build predictable revenue." action={{ label: "New Subscription", onClick: () => {setSubscriptionToEdit(null); setIsSubscriptionModalOpen(true);}}}/>
+                        )}
+                    </section>
+                );
             default:
                 return null;
         }

@@ -28,6 +28,8 @@ export type Company = Doc<"company"> & {
     bookingLeadTimeDays?: number;
     slotDurationMinutes?: number;
     enableEmailReminders?: boolean;
+    brandColor?: string;
+    logoStorageId?: Id<'_storage'>;
 };
 export type Supplier = Doc<"suppliers"> & {
     estimatedLeadTimeDays?: number;
@@ -52,4 +54,4 @@ export type Subscription = Doc<"subscriptions">;
 export type AuditLog = Doc<"auditLogs">;
 export type Snapshot = Doc<"snapshots">;
 
-export type Page = 'dashboard' | 'management' | 'schedule' | 'settings' | 'reports' | 'inventory' | 'marketing' | 'stripe-onboarding' | 'knowledge-base' | 'assistant';
+export type Page = 'dashboard' | 'management' | 'schedule' | 'settings' | 'reports' | 'inventory' | 'marketing' | 'knowledge-base' | 'assistant';

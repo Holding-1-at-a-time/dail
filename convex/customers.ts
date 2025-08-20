@@ -2,6 +2,7 @@ import { v } from 'convex/values';
 import { mutation } from './_generated/server';
 import { customerCount } from './aggregates';
 import { internal } from './_generated/api';
+import { Id } from './_generated/dataModel';
 
 export const saveCustomerWithVehicles = mutation({
     args: {
@@ -22,7 +23,7 @@ export const saveCustomerWithVehicles = mutation({
         })),
     },
     handler: async (ctx, { customerId, customerData, vehiclesData }) => {
-        let finalCustomerId: string;
+        let finalCustomerId: Id<'customers'>;
 
         if (customerId) {
             // Update existing customer

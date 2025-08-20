@@ -53,6 +53,7 @@ export const getDataForDetailPage = query({
         
         const services = await ctx.db.query('services').collect();
         const checklists = await ctx.db.query('checklists').collect();
+        const company = await ctx.db.query('company').first();
         
         const photoUrls = await Promise.all(
             (job.photos || []).map(async (p) => ({
@@ -63,8 +64,12 @@ export const getDataForDetailPage = query({
         );
 
         const signatureUrl = job.customerSignatureStorageId ? await ctx.storage.getUrl(job.customerSignatureStorageId) : null;
+        
+        const companyWithLogoUrl = company 
+            ? { ...company, logoUrl: company.logoStorageId ? await ctx.storage.getUrl(company.logoStorageId) : null }
+            : null;
 
-        return { job, customer, vehicle, services, checklists, photoUrls, signatureUrl };
+        return { job, customer, vehicle, services, checklists, photoUrls, signatureUrl, company: companyWithLogoUrl };
     }
 });
 
@@ -271,22 +276,27 @@ export const generateInvoice = mutation({
 export const savePayment = mutation({
     args: {
         jobId: v.id('jobs'),
-        payment: v.object({ amount: v.number(), paymentDate: v.number(), method: v.string(), notes: v.optional(v.string()) })
+        payment: v.object({ 
+            amount: v.number(), 
+            paymentDate: v.number(), 
+            method: v.union(v.literal('Cash'), v.literal('Credit Card'), v.literal('Check'), v.literal('Bank Transfer'), v.literal('Other')), 
+            notes: v.optional(v.string()) 
+        })
     },
     handler: async (ctx, { jobId, payment }) => {
-        const oldDoc = await ctx.db.get(jobId);
-        if (!oldDoc) throw new Error("Job not found");
+        const oldJob = await ctx.db.get(jobId);
+        if (!oldJob) throw new Error("Job not found");
         
         const newPayment = { ...payment, id: `pay_${Date.now()}`};
-        const payments = [...(oldDoc.payments || []), newPayment];
+        const payments = [...(oldJob.payments || []), newPayment];
         const paymentReceived = payments.reduce((sum, p) => sum + p.amount, 0);
         
         let paymentStatus: 'unpaid' | 'partial' | 'paid' = 'partial';
-        if (paymentReceived >= oldDoc.totalAmount) paymentStatus = 'paid';
+        if (paymentReceived >= oldJob.totalAmount) paymentStatus = 'paid';
         if (paymentReceived <= 0) paymentStatus = 'unpaid';
 
-        let status = oldDoc.status;
-        let completionDate = oldDoc.completionDate;
+        let status = oldJob.status;
+        let completionDate = oldJob.completionDate;
         if (paymentStatus === 'paid' && status !== 'completed') {
             status = 'completed';
             completionDate = Date.now();
@@ -305,8 +315,8 @@ export const savePayment = mutation({
 
         const newDoc = await ctx.db.get(jobId);
         if (newDoc) {
-            await jobStats.replace(ctx, oldDoc, newDoc);
-            await ctx.runMutation(internal.jobs.updateReportingAggregates, { oldJob: oldDoc, newJob: newDoc });
+            await jobStats.replace(ctx, oldJob, newDoc);
+            await ctx.runMutation(internal.jobs.updateReportingAggregates, { oldJob, newJob: newDoc });
         }
         
         if (newDoc?.status === 'completed' && !newDoc.inventoryDebited) {

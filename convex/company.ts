@@ -2,6 +2,7 @@
 import { v } from 'convex/values';
 import { mutation, action, query } from './_generated/server';
 import { internal } from './_generated/api';
+import { Id } from './_generated/dataModel';
 
 export const get = query({
     handler: async (ctx) => {
@@ -15,6 +16,7 @@ export const save = mutation({
         name: v.string(),
         defaultLaborRate: v.number(),
         enableSmartInventory: v.boolean(),
+        brandColor: v.optional(v.string()),
         businessHours: v.optional(v.object({
             monday: v.optional(v.object({ start: v.string(), end: v.string(), enabled: v.boolean() })),
             tuesday: v.optional(v.object({ start: v.string(), end: v.string(), enabled: v.boolean() })),
@@ -39,6 +41,17 @@ export const save = mutation({
             }
         });
     }
+});
+
+export const setLogo = mutation({
+    args: { storageId: v.id('_storage') },
+    handler: async (ctx, { storageId }) => {
+        const company = await ctx.db.query('company').first();
+        if (!company) {
+            throw new Error("Company profile not found.");
+        }
+        await ctx.db.patch(company._id, { logoStorageId: storageId });
+    },
 });
 
 export const createStripeAccountSession = action({

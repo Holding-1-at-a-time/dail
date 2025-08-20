@@ -28,8 +28,19 @@ function App() {
 
   const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth();
   const currentUser = useQuery(api.users.getCurrent);
+  const company = useQuery(api.company.get);
   const dataForCustomerPortal = useQuery(api.jobs.getDataForCustomerPortal, publicJobKey ? { key: publicJobKey } : "skip");
   
+  // Apply branding colors globally
+  useEffect(() => {
+    const root = document.documentElement;
+    if (company?.brandColor) {
+      root.style.setProperty('--primary-color', company.brandColor);
+    } else {
+      root.style.setProperty('--primary-color', '#00AE98'); // Default color
+    }
+  }, [company?.brandColor]);
+
   // Top-level routing for Public Booking Page
   if (window.location.pathname.startsWith('/book')) {
       return <BookingPage />;
@@ -46,7 +57,7 @@ function App() {
 
   // When user switches, if they are on a page they can't access, move them to dashboard
   useEffect(() => {
-    const adminPages: Page[] = ['management', 'settings', 'reports', 'inventory', 'marketing', 'stripe-onboarding', 'knowledge-base', 'assistant'];
+    const adminPages: Page[] = ['management', 'settings', 'reports', 'inventory', 'marketing', 'knowledge-base', 'assistant'];
     if (currentUser?.role === 'technician' && adminPages.includes(activePage)) {
         setActivePage('dashboard');
     }
@@ -107,9 +118,6 @@ function App() {
        case 'settings':
         if (currentUser.role !== 'admin') return null;
         return <SettingsPage setActivePage={setActivePage} />;
-       case 'stripe-onboarding':
-         if (currentUser.role !== 'admin') return null;
-         return <StripeOnboarding onOnboardingComplete={() => setActivePage('settings')} />;
        case 'reports':
         if (currentUser.role !== 'admin') return null;
         return <ReportsPage />;
