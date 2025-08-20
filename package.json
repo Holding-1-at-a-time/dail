@@ -13,7 +13,7 @@
     "react": "^18.2.0",
     "@google/genai": "latest",
     "@clerk/clerk-react": "5",
-    "jspdf": "2.5.1",
+    "jspdf": "3.0.1",
     "chart.js": "4.4.3",
     "react-chartjs-2": "5.2.0",
     "@stripe/react-connect-js": "1.0.0",
