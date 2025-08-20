@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '../convex/_generated/api';
 import { Id } from '../convex/_generated/dataModel';
 import { Job, Customer, Vehicle, Service, PricingMatrix, Upcharge, JobItem, PricingRule, Promotion, Product } from '../types';
 import Modal from './Modal';
-import { PlusIcon, TrashIcon, SparklesIcon, ExclamationTriangleIcon, UserGroupIcon } from './icons';
+import { PlusIcon, TrashIcon, SparklesIcon, ExclamationTriangleIcon } from './icons';
 import CustomerFormModal from './CustomerFormModal';
 import { useToasts } from './ToastProvider';
 
@@ -23,7 +24,6 @@ const JobFormModal: React.FC<JobFormModalProps> = ({ isOpen, onClose, jobToEdit 
     notes: '',
     appliedPromotionId: undefined,
     discountAmount: 0,
-    assignedTechnicianIds: [],
   });
   const [jobItems, setJobItems] = useState<JobItem[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<Id<'customers'> | ''>('');
@@ -38,8 +38,6 @@ const JobFormModal: React.FC<JobFormModalProps> = ({ isOpen, onClose, jobToEdit 
   const { addToast } = useToasts();
   const data = useQuery(api.jobs.getDataForForm);
   const currentJob = useQuery(api.jobs.get, currentJobId ? { id: currentJobId } : "skip");
-  const currentUser = useQuery(api.users.getCurrent);
-  const isAdmin = currentUser?.role === 'admin';
 
   const saveJob = useMutation(api.jobs.save);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
@@ -53,7 +51,6 @@ const JobFormModal: React.FC<JobFormModalProps> = ({ isOpen, onClose, jobToEdit 
   const upcharges = data?.upcharges ?? [];
   const promotions = data?.promotions ?? [];
   const products = data?.products ?? [];
-  const technicians = data?.technicians ?? [];
 
   const availableVehicles = useMemo(() => {
     return vehicles.filter(v => v.customerId === selectedCustomerId);
@@ -71,7 +68,6 @@ const JobFormModal: React.FC<JobFormModalProps> = ({ isOpen, onClose, jobToEdit 
           notes: jobToEdit.notes || '',
           appliedPromotionId: jobToEdit.appliedPromotionId,
           discountAmount: jobToEdit.discountAmount,
-          assignedTechnicianIds: jobToEdit.assignedTechnicianIds || [],
         });
         setSelectedCustomerId(jobToEdit.customerId);
         setJobItems(jobToEdit.jobItems);
@@ -79,7 +75,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({ isOpen, onClose, jobToEdit 
         setPromoCode(appliedPromo?.code || '');
       } else {
         setCurrentJobId(null);
-        setFormData({ status: 'estimate', estimateDate: Date.now(), notes: '', discountAmount: 0, assignedTechnicianIds: [] });
+        setFormData({ status: 'estimate', estimateDate: Date.now(), notes: '', discountAmount: 0 });
         setJobItems([]);
         setSelectedCustomerId('');
         setPromoCode('');
@@ -130,16 +126,6 @@ const JobFormModal: React.FC<JobFormModalProps> = ({ isOpen, onClose, jobToEdit 
       setSelectedCustomerId(value as Id<'customers'>);
       setFormData(prev => ({...prev, vehicleId: undefined}));
     }
-  };
-  
-  const handleTechnicianToggle = (technicianId: Id<'users'>) => {
-    setFormData(prev => {
-        const currentAssigned = prev.assignedTechnicianIds || [];
-        const newAssigned = currentAssigned.includes(technicianId)
-            ? currentAssigned.filter(id => id !== technicianId)
-            : [...currentAssigned, technicianId];
-        return { ...prev, assignedTechnicianIds: newAssigned };
-    });
   };
 
   const addServiceItem = (serviceId: Id<'services'>) => {
@@ -305,29 +291,6 @@ const JobFormModal: React.FC<JobFormModalProps> = ({ isOpen, onClose, jobToEdit 
               </div>
           </div>
           
-           {isAdmin && (
-            <div className="pt-4 border-t border-gray-700">
-              <h3 className="text-lg font-medium text-gray-200 mb-2 flex items-center">
-                <UserGroupIcon className="w-5 h-5 mr-2" />
-                Assign Technicians
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 p-4 bg-gray-900 rounded-md max-h-48 overflow-y-auto">
-                {technicians.map(tech => (
-                  <div key={tech._id} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id={`tech-${tech._id}`}
-                      checked={(formData.assignedTechnicianIds || []).includes(tech._id)}
-                      onChange={() => handleTechnicianToggle(tech._id)}
-                      className="h-4 w-4 text-primary bg-gray-700 border-gray-600 rounded focus:ring-primary"
-                    />
-                    <label htmlFor={`tech-${tech._id}`} className="ml-2 text-sm text-gray-300">{tech.name}</label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           <div className="pt-4 border-t border-gray-700">
             <h3 className="text-lg font-medium text-gray-200 mb-2">Visual Quoting (AI Assist)</h3>
             <div className="p-4 bg-gray-900 rounded-md space-y-3">

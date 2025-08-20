@@ -1,3 +1,5 @@
+
+
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
@@ -19,31 +21,16 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, onViewJob }) =
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [appointmentToEdit, setAppointmentToEdit] = useState<Appointment | null>(null);
     const [defaultStartTimeForModal, setDefaultStartTimeForModal] = useState<number | null>(null);
-    const [technicianFilter, setTechnicianFilter] = useState<Id<'users'> | 'all'>('all');
 
     const scheduleData = useQuery(api.appointments.getScheduleData);
     const rescheduleAppointment = useMutation(api.appointments.reschedule);
     const { addToast } = useToasts();
-    
-    const isAdmin = currentUser?.role === 'admin';
-    const technicians = isAdmin ? scheduleData?.technicians || [] : [];
 
     const events = useMemo(() => {
         if (!scheduleData) return [];
         const { appointmentsForCurrentUser, jobsForCurrentUser, customers, vehicles } = scheduleData;
-        
-        let appointmentsToDisplay = appointmentsForCurrentUser;
 
-        if (isAdmin && technicianFilter !== 'all') {
-            const filteredJobIds = new Set(
-                jobsForCurrentUser
-                    .filter(j => j.assignedTechnicianIds?.includes(technicianFilter))
-                    .map(j => j._id)
-            );
-            appointmentsToDisplay = appointmentsForCurrentUser.filter(a => filteredJobIds.has(a.jobId));
-        }
-
-        return appointmentsToDisplay.map(appt => {
+        return appointmentsForCurrentUser.map(appt => {
             const job = jobsForCurrentUser.find(j => j._id === appt.jobId);
             const customer = customers.find(c => c?._id === job?.customerId);
             const vehicle = vehicles.find(v => v?._id === job?.vehicleId);
@@ -61,7 +48,7 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, onViewJob }) =
                 borderColor: 'var(--primary-color)',
             };
         });
-    }, [scheduleData, isAdmin, technicianFilter]);
+    }, [scheduleData]);
 
     const handleDateClick = (arg: { date: Date, allDay: boolean }) => {
         setDefaultStartTimeForModal(arg.date.getTime());
@@ -95,26 +82,8 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, onViewJob }) =
     return (
         <>
             <div className="container mx-auto p-4 md:p-8 h-full flex flex-col">
-                <header className="flex-shrink-0 mb-6 flex flex-wrap justify-between items-center gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold text-white">Schedule</h1>
-                    </div>
-                    {isAdmin && technicians.length > 0 && (
-                        <div>
-                            <label htmlFor="technicianFilterSchedule" className="sr-only">Filter by Technician</label>
-                            <select
-                                id="technicianFilterSchedule"
-                                value={technicianFilter}
-                                onChange={(e) => setTechnicianFilter(e.target.value as Id<'users'> | 'all')}
-                                className="bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:ring-primary focus:border-primary"
-                            >
-                                <option value="all">All Technicians</option>
-                                {technicians.map(tech => (
-                                <option key={tech._id} value={tech._id}>{tech.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
+                <header className="flex-shrink-0 mb-6">
+                    <h1 className="text-3xl font-bold text-white">Schedule</h1>
                 </header>
                 <div className="flex-grow">
                     <FullCalendar

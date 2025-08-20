@@ -1,3 +1,5 @@
+
+
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { Id } from './_generated/dataModel';
@@ -45,14 +47,11 @@ export const getScheduleData = query({
         const customers = await Promise.all(Array.from(customerIds).map(id => ctx.db.get(id)));
         const vehicles = await Promise.all(Array.from(vehicleIds).map(id => ctx.db.get(id)));
 
-        const technicians = currentUser.role === 'admin' ? await ctx.db.query("users").collect() : [];
-
         return {
             appointmentsForCurrentUser,
             jobsForCurrentUser,
             customers: customers.filter(Boolean),
             vehicles: vehicles.filter(Boolean),
-            technicians,
         };
     }
 });

@@ -48,8 +48,8 @@ export const getSettingsData = query({
 });
 
 export const getDashboardData = query({
-  args: { technicianId: v.optional(v.id("users")) },
-  handler: async (ctx, { technicianId }) => {
+  args: {},
+  handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
     const currentUser = await ctx.db
@@ -86,109 +86,94 @@ export const getDashboardData = query({
     }
 
     // Admin Path
-    const technicians = await ctx.db.query("users").collect();
-    
-    // --- Non-filtered stats. These are always company-wide ---
+    const recentJobsForList = await ctx.db.query("jobs").order("desc").take(10);
+    const jobsWithDetails = await Promise.all(
+      recentJobsForList.map(async (job) => {
+        const customer = await ctx.db.get(job.customerId);
+        const vehicle = await ctx.db.get(job.vehicleId);
+        return { ...job, customer, vehicle };
+      })
+    );
+
+    // --- OPTIMIZED STATS ---
     const totalCustomers = await customerCount.count(ctx);
-    const lowStockItems = await productStockStatusAggregate.count(ctx, { namespace: undefined, bounds: { prefix: [1] } });
-    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
-    const appointmentsToday = (await ctx.db.query("appointments").collect()).filter(a => a.startTime >= todayStart.getTime() && a.startTime <= todayEnd.getTime()).length;
+    const workOrderCount = await jobStats.count(ctx, { namespace: undefined, bounds: { prefix: ['workOrder'] } });
+    const invoiceCount = await jobStats.count(ctx, { namespace: undefined, bounds: { prefix: ['invoice'] } });
+    const activeJobs = workOrderCount + invoiceCount;
     
-    // --- Filtered vs Aggregate Stats ---
-    let activeJobs, revenueThisMonth, jobsForDashboard, revenueByServiceChartData;
+    const oneMonthAgoTimestamp = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const lowerBoundKey = ['completed', oneMonthAgoTimestamp];
+    const upperBoundKey = ['completed', Date.now()];
 
-    if (technicianId) {
-        // MANUAL CALCULATION FOR FILTERED VIEW
-        const allJobs = await ctx.db.query("jobs").order("desc").collect();
-        const techJobs = allJobs.filter(j => j.assignedTechnicianIds?.includes(technicianId));
-        
-        const jobsWithDetails = await Promise.all(
-            techJobs.slice(0, 10).map(async (job) => {
-              const customer = await ctx.db.get(job.customerId);
-              const vehicle = await ctx.db.get(job.vehicleId);
-              return { ...job, customer, vehicle };
-            })
-        );
-        jobsForDashboard = jobsWithDetails;
-
-        const oneMonthAgoTimestamp = Date.now() - 30 * 24 * 60 * 60 * 1000;
-        const completedJobsLastMonth = techJobs.filter(j => j.status === 'completed' && j.completionDate && j.completionDate >= oneMonthAgoTimestamp);
-        revenueThisMonth = completedJobsLastMonth.reduce((sum, job) => sum + job.totalAmount, 0);
-        activeJobs = techJobs.filter(j => ["workOrder", "invoice"].includes(j.status)).length;
-        
-        const allServices = await ctx.db.query("services").collect();
-        const revenueByService: Record<string, number> = {};
-        for (const job of completedJobsLastMonth) {
-            for (const item of job.jobItems) {
-                const service = allServices.find((s) => s._id === item.serviceId);
-                if (service) {
-                  revenueByService[service.name] = (revenueByService[service.name] || 0) + item.total;
-                }
-            }
+    const revenueThisMonth = await jobStats.sum(ctx, {
+        namespace: undefined,
+        bounds: {
+            lower: { key: lowerBoundKey, inclusive: true },
+            upper: { key: upperBoundKey, inclusive: true },
         }
-        const sortedRevenueByService = Object.entries(revenueByService).sort(([, a], [, b]) => b - a).slice(0, 5);
-        revenueByServiceChartData = {
-            labels: sortedRevenueByService.map((item) => item[0]),
-            data: sortedRevenueByService.map((item) => item[1]),
-        };
+    });
+    
+    const lowStockItems = await productStockStatusAggregate.count(ctx, { namespace: undefined, bounds: { prefix: [1] } });
+    
+    // --- Chart & Remaining Stats ---
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+    const appointmentsToday = (
+      await ctx.db.query("appointments").collect()
+    ).filter(
+      (a) =>
+        a.startTime >= todayStart.getTime() && a.startTime <= todayEnd.getTime()
+    ).length;
 
-    } else {
-        // AGGREGATE CALCULATION FOR "ALL" VIEW
-        const recentJobsForList = await ctx.db.query("jobs").order("desc").take(10);
-        const jobsWithDetails = await Promise.all(
-          recentJobsForList.map(async (job) => {
-            const customer = await ctx.db.get(job.customerId);
-            const vehicle = await ctx.db.get(job.vehicleId);
-            return { ...job, customer, vehicle };
-          })
-        );
-        jobsForDashboard = jobsWithDetails;
-
-        const workOrderCount = await jobStats.count(ctx, { namespace: undefined, bounds: { prefix: ['workOrder'] } });
-        const invoiceCount = await jobStats.count(ctx, { namespace: undefined, bounds: { prefix: ['invoice'] } });
-        activeJobs = workOrderCount + invoiceCount;
-        
-        const oneMonthAgoTimestamp = Date.now() - 30 * 24 * 60 * 60 * 1000;
-        const lowerBoundKey = ['completed', oneMonthAgoTimestamp];
-        const upperBoundKey = ['completed', Date.now()];
-        revenueThisMonth = await jobStats.sum(ctx, {
-            namespace: undefined,
-            bounds: { lower: { key: lowerBoundKey, inclusive: true }, upper: { key: upperBoundKey, inclusive: true } }
-        });
-
-        const completedJobsLastMonth = await jobStats.paginate(ctx, {
-            namespace: undefined,
-            bounds: { lower: { key: lowerBoundKey, inclusive: true }, upper: { key: upperBoundKey, inclusive: true } }
-        });
-
-        const completedJobIds = completedJobsLastMonth.page.map((item: any) => item._id);
-        const nullableJobDocs: (Doc<"jobs"> | null)[] = await Promise.all(completedJobIds.map(id => ctx.db.get(id)));
-        const jobDocs = nullableJobDocs.filter((doc): doc is Doc<"jobs"> => doc !== null);
-        
-        const allServices = await ctx.db.query("services").collect();
-        const revenueByService: Record<string, number> = {};
-        for (const job of jobDocs) {
-          for (const item of job.jobItems) {
-            const service = allServices.find((s) => s._id === item.serviceId);
-            if (service) {
-              revenueByService[service.name] = (revenueByService[service.name] || 0) + item.total;
-            }
-          }
+    // Chart data still requires fetching some jobs, but this is acceptable for a top-5 chart.
+    const completedJobsLastMonth = await jobStats.paginate(ctx, {
+        namespace: undefined,
+        bounds: {
+            lower: { key: lowerBoundKey, inclusive: true },
+            upper: { key: upperBoundKey, inclusive: true },
         }
-        const sortedRevenueByService = Object.entries(revenueByService).sort(([, a], [, b]) => b - a).slice(0, 5);
-        revenueByServiceChartData = {
-          labels: sortedRevenueByService.map((item) => item[0]),
-          data: sortedRevenueByService.map((item) => item[1]),
-        };
+    });
+
+    const completedJobIds = completedJobsLastMonth.page.map((item: any) => item._id);
+    const nullableJobDocs: (Doc<"jobs"> | null)[] = await Promise.all(
+      completedJobIds.map(id => ctx.db.get(id))
+    );
+    const jobDocs = nullableJobDocs.filter((doc): doc is Doc<"jobs"> => doc !== null);
+    
+    const allServices = await ctx.db.query("services").collect();
+    const revenueByService: Record<string, number> = {};
+    for (const job of jobDocs) {
+      for (const item of job.jobItems) {
+        const service = allServices.find((s) => s._id === item.serviceId);
+        if (service) {
+          revenueByService[service.name] = (revenueByService[service.name] || 0) + item.total;
+        }
+      }
     }
 
-    const stats = { activeJobs, revenueThisMonth, totalCustomers, appointmentsToday, lowStockItems };
+    const sortedRevenueByService = Object.entries(revenueByService)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5);
+
+    const revenueByServiceChartData = {
+      labels: sortedRevenueByService.map((item) => item[0]),
+      data: sortedRevenueByService.map((item) => item[1]),
+    };
+
+    const stats = {
+      activeJobs,
+      revenueThisMonth,
+      totalCustomers,
+      appointmentsToday,
+      lowStockItems,
+    };
 
     return {
       stats,
-      jobsForDashboard,
-      adminDashboardData: { revenueByServiceChartData, technicians },
+      jobsForDashboard: jobsWithDetails,
+      adminDashboardData: { revenueByServiceChartData },
     };
   },
 });

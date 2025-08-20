@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '../convex/_generated/api';
@@ -7,7 +8,6 @@ import JobFormModal from './JobFormModal';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from 'chart.js';
 import EmptyState from './EmptyState';
-import { Id } from '../convex/_generated/dataModel';
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
@@ -30,12 +30,8 @@ const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode }
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onViewJob }) => {
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
-  const [technicianFilter, setTechnicianFilter] = useState<Id<'users'> | 'all'>('all');
   
-  const dashboardData = useQuery(
-      api.users.getDashboardData,
-      technicianFilter === 'all' ? {} : { technicianId: technicianFilter }
-  );
+  const dashboardData = useQuery(api.users.getDashboardData);
 
   if (!currentUser || !dashboardData) {
       return <div className="p-8 text-center">Loading dashboard...</div>;
@@ -43,7 +39,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onViewJob })
 
   const { stats, jobsForDashboard, adminDashboardData } = dashboardData;
   const isAdmin = currentUser.role === 'admin';
-  const technicians = isAdmin ? adminDashboardData?.technicians || [] : [];
 
   const chartData = useMemo(() => {
     if (!isAdmin || !adminDashboardData?.revenueByServiceChartData) {
@@ -84,29 +79,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onViewJob })
   return (
     <>
         <div className="container mx-auto p-4 md:p-8">
-            <header className="flex flex-wrap justify-between items-center mb-8 gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-                    <p className="text-gray-400 mt-1">
-                        Welcome back, {currentUser.name}! Here's a snapshot of your business activity.
-                    </p>
-                </div>
-                 {isAdmin && technicians.length > 0 && (
-                    <div>
-                        <label htmlFor="technicianFilter" className="sr-only">Filter by Technician</label>
-                        <select
-                            id="technicianFilter"
-                            value={technicianFilter}
-                            onChange={(e) => setTechnicianFilter(e.target.value as Id<'users'> | 'all')}
-                            className="bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:ring-primary focus:border-primary"
-                        >
-                            <option value="all">All Technicians</option>
-                            {technicians.map(tech => (
-                                <option key={tech._id} value={tech._id}>{tech.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                )}
+            <header className="mb-8">
+                <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+                <p className="text-gray-400 mt-1">
+                    Welcome back, {currentUser.name}! Here's a snapshot of your business activity.
+                </p>
             </header>
 
             <div className={`grid grid-cols-1 md:grid-cols-2 ${isAdmin ? 'lg:grid-cols-5' : 'lg:grid-cols-1'} gap-6 mb-8`}>
@@ -203,7 +180,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onViewJob })
                                 </div>
                             ) : (
                                 <div className="text-center">
-                                    <p className="text-gray-500">No revenue data for the selected period to display a chart.</p>
+                                    <p className="text-gray-500">No revenue data for the last 30 days to display a chart.</p>
                                 </div>
                             )}
                         </div>
