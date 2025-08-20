@@ -1,3 +1,4 @@
+
 import { v } from 'convex/values';
 import { internalMutation, mutation, query, MutationCtx } from './_generated/server';
 import { internal } from './_generated/api';
@@ -11,6 +12,14 @@ const getUserId = async (ctx: MutationCtx) => {
         throw new Error("Not authenticated");
     }
     return identity.subject;
+};
+
+const requireAdmin = async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject)).unique();
+    if (!user || user.role !== 'admin') throw new Error("Not authorized");
+    return user;
 };
 
 export const getData = query({
@@ -32,6 +41,7 @@ export const savePromotion = mutation({
         })
     },
     handler: async (ctx, { id, data }) => {
+        await requireAdmin(ctx);
         if (id) {
             await ctx.db.patch(id, data);
         } else {
@@ -43,6 +53,7 @@ export const savePromotion = mutation({
 export const deletePromotion = mutation({
     args: { id: v.id('promotions') },
     handler: async (ctx, { id }) => {
+        await requireAdmin(ctx);
         await ctx.db.delete(id);
     }
 });
@@ -57,6 +68,7 @@ export const saveCampaign = mutation({
         })
     },
     handler: async (ctx, { id, data }) => {
+        await requireAdmin(ctx);
         if (id) {
             // Standard edit for a campaign that's already been generated.
             await ctx.db.patch(id, { goal: data.goal, subject: data.subject, body: data.body });
@@ -85,6 +97,7 @@ export const saveCampaign = mutation({
 export const sendCampaign = mutation({
     args: { campaignId: v.id('campaigns') },
     handler: async (ctx, { campaignId }) => {
+        await requireAdmin(ctx);
         const campaign = await ctx.db.get(campaignId);
         if (!campaign || campaign.status !== 'complete') {
             throw new Error("Campaign is not ready to be sent.");

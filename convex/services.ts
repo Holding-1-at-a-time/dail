@@ -1,6 +1,15 @@
+
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { internal } from './_generated/api';
+
+const requireAdmin = async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject)).unique();
+    if (!user || user.role !== 'admin') throw new Error("Not authorized");
+    return user;
+};
 
 export const getAll = query({
     handler: async (ctx) => {
@@ -23,6 +32,7 @@ export const create = mutation({
         }))),
     },
     handler: async (ctx, args) => {
+        await requireAdmin(ctx);
         return await ctx.db.insert('services', args);
     }
 });
@@ -43,6 +53,7 @@ export const update = mutation({
         }))),
     },
     handler: async (ctx, { id, ...rest }) => {
+        await requireAdmin(ctx);
         return await ctx.db.patch(id, rest);
     }
 });
@@ -50,6 +61,7 @@ export const update = mutation({
 export const remove = mutation({
     args: { id: v.id('services') },
     handler: async (ctx, { id }) => {
+        await requireAdmin(ctx);
         const service = await ctx.db.get(id);
         if (!service) return;
 

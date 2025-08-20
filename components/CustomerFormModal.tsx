@@ -22,6 +22,7 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({ isOpen, onClose, 
     internalNotes: ''
   });
   const [vehicles, setVehicles] = useState<Omit<Vehicle, '_id' | '_creationTime' | 'customerId'>[]>([]);
+  const [errors, setErrors] = useState<{ email?: string; phone?: string }>({});
 
   const saveCustomer = useMutation(api.customers.saveCustomerWithVehicles);
 
@@ -42,11 +43,29 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({ isOpen, onClose, 
         });
         setVehicles([]);
       }
+      setErrors({});
     }
   }, [customerToEdit, vehiclesForCustomer, isOpen]);
 
+  const validate = () => {
+    const newErrors: { email?: string; phone?: string } = {};
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerData.email)) {
+        newErrors.email = "Please enter a valid email address.";
+    }
+    // Basic North American phone validation
+    if (customerData.phone && !/^\s*(?:\+?(\d{1,3}))?[-. (]*(\d{3})[-. )]*(\d{3})[-. ]*(\d{4})(?: *x(\d+))?\s*$/.test(customerData.phone)) {
+        newErrors.phone = "Please enter a valid phone number format.";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleCustomerChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setCustomerData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setCustomerData(prev => ({ ...prev, [name]: value }));
+     if ((name === 'email' || name === 'phone') && errors[name as keyof typeof errors]) {
+        setErrors(prev => ({ ...prev, [name]: undefined }));
+    }
   };
   
   const handleVehicleChange = (index: number, field: keyof Omit<Vehicle, '_id' | '_creationTime' | 'customerId'>, value: string | number) => {
@@ -65,6 +84,8 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({ isOpen, onClose, 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
+
     await saveCustomer({
         customerId: customerToEdit?._id,
         customerData,
@@ -85,10 +106,12 @@ const CustomerFormModal: React.FC<CustomerFormModalProps> = ({ isOpen, onClose, 
             <div>
                 <label htmlFor="phone" className="block text-sm font-medium text-gray-300">Phone Number</label>
                 <input type="tel" name="phone" id="phone" value={customerData.phone} onChange={handleCustomerChange} required className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:ring-blue-500 focus:border-blue-500"/>
+                {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
             </div>
              <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-300">Email Address</label>
                 <input type="email" name="email" id="email" value={customerData.email} onChange={handleCustomerChange} required className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:ring-blue-500 focus:border-blue-500"/>
+                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
             </div>
              <div>
                 <label htmlFor="address" className="block text-sm font-medium text-gray-300">Address</label>

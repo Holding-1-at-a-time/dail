@@ -1,8 +1,17 @@
+
 import { v } from 'convex/values';
 import { internalAction, internalMutation, internalQuery, mutation, query } from './_generated/server';
 import { Id } from './_generated/dataModel';
 import { productStockStatusAggregate } from './aggregates';
 import { api, internal } from './_generated/api';
+
+const requireAdmin = async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject)).unique();
+    if (!user || user.role !== 'admin') throw new Error("Not authorized");
+    return user;
+};
 
 export const getData = query({
     handler: async (ctx) => {
@@ -38,6 +47,7 @@ export const createProduct = mutation({
         barcode: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        await requireAdmin(ctx);
         if (args.barcode) {
             const existing = await ctx.db.query('products').withIndex('by_barcode', q => q.eq('barcode', args.barcode!)).first();
             if (existing) throw new Error("A product with this barcode already exists.");
@@ -63,6 +73,7 @@ export const updateProduct = mutation({
         barcode: v.optional(v.string()),
     },
     handler: async (ctx, { id, ...rest }) => {
+        await requireAdmin(ctx);
         const oldDoc = await ctx.db.get(id);
         if (!oldDoc) throw new Error("Product not found");
 
@@ -83,6 +94,7 @@ export const updateProduct = mutation({
 export const deleteProduct = mutation({
     args: { id: v.id('products') },
     handler: async (ctx, { id }) => {
+        await requireAdmin(ctx);
         const oldDoc = await ctx.db.get(id);
         if (!oldDoc) return;
         
@@ -109,6 +121,7 @@ export const receiveMultipleStockItems = mutation({
         }))
     },
     handler: async (ctx, { items }) => {
+        await requireAdmin(ctx);
         for (const item of items) {
              const oldDoc = await ctx.db.get(item.productId);
             if (!oldDoc) continue; // Skip if product not found

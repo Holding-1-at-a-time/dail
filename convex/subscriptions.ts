@@ -1,7 +1,16 @@
+
 import { v } from 'convex/values';
 import { internalAction, mutation, query, internalQuery, internalMutation } from './_generated/server';
 import { Id } from './_generated/dataModel';
 import { internal } from './_generated/api';
+
+const requireAdmin = async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject)).unique();
+    if (!user || user.role !== 'admin') throw new Error("Not authorized");
+    return user;
+};
 
 export const list = query({
     handler: async (ctx) => {
@@ -21,6 +30,7 @@ export const save = mutation({
         })
     },
     handler: async (ctx, { id, data }) => {
+        await requireAdmin(ctx);
         if (id) {
             await ctx.db.patch(id, { ...data });
         } else {
@@ -39,6 +49,7 @@ export const updateStatus = mutation({
         status: v.union(v.literal('active'), v.literal('paused'), v.literal('cancelled')),
     },
     handler: async (ctx, { id, status }) => {
+        await requireAdmin(ctx);
         await ctx.db.patch(id, { status });
 
         if (status === 'cancelled') {

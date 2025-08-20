@@ -1,5 +1,14 @@
+
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
+
+const requireAuth = async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject)).unique();
+    if (!user) throw new Error("User not found.");
+    return user;
+};
 
 export const getAll = query({
     handler: async (ctx) => {
@@ -63,9 +72,10 @@ export const save = mutation({
         startTime: v.number(),
         endTime: v.number(),
         description: v.optional(v.string()),
-        status: v.union(v.literal('scheduled'), v.literal('inProgress'), v.literal('completed'), v.literal('cancelled')),
+        status: v.union(v.union(v.literal('scheduled'), v.literal('inProgress'), v.literal('completed'), v.literal('cancelled'))),
     },
     handler: async (ctx, { id, ...rest }) => {
+        await requireAuth(ctx);
         if (id) {
             await ctx.db.patch(id, rest);
         } else {
@@ -77,6 +87,7 @@ export const save = mutation({
 export const remove = mutation({
     args: { id: v.id('appointments') },
     handler: async (ctx, { id }) => {
+        await requireAuth(ctx);
         return await ctx.db.delete(id);
     }
 });

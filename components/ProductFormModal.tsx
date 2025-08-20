@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useMutation, useQuery, useAction } from 'convex/react';
 import { api } from '../convex/_generated/api';
@@ -86,7 +87,7 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onClose, pr
         onClose();
     } catch (error: any) {
         console.error("Error saving product:", error);
-        alert(`Error: ${error.message || "Could not save product."}`);
+        alert(`Error: ${error.data || "Could not save product."}`);
     }
   };
 
@@ -108,8 +109,8 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onClose, pr
         </div>
         <div><label htmlFor="supplierId" className="block text-sm font-medium text-gray-300">Supplier</label><select name="supplierId" id="supplierId" value={formData.supplierId} onChange={handleChange} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white"><option value="" disabled>Select a supplier...</option>{suppliers.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}</select></div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div><label htmlFor="stockLevel" className="block text-sm font-medium text-gray-300">Current Stock</label><input type="number" name="stockLevel" id="stockLevel" value={formData.stockLevel} onChange={handleChange} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white" /></div>
-            <div><label htmlFor="reorderPoint" className="block text-sm font-medium text-gray-300">Reorder Point</label><input type="number" name="reorderPoint" id="reorderPoint" value={formData.reorderPoint} onChange={handleChange} required className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white" /></div>
+            <div><label htmlFor="stockLevel" className="block text-sm font-medium text-gray-300">Current Stock</label><input type="number" name="stockLevel" id="stockLevel" value={formData.stockLevel} onChange={handleChange} required min="0" className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white" /></div>
+            <div><label htmlFor="reorderPoint" className="block text-sm font-medium text-gray-300">Reorder Point</label><input type="number" name="reorderPoint" id="reorderPoint" value={formData.reorderPoint} onChange={handleChange} required min="0" className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white" /></div>
         </div>
          <div>
             <label htmlFor="barcode" className="block text-sm font-medium text-gray-300">Barcode / SKU</label>

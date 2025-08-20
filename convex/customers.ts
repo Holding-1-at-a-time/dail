@@ -1,8 +1,17 @@
+
 import { v } from 'convex/values';
 import { mutation } from './_generated/server';
 import { customerCount } from './aggregates';
 import { internal } from './_generated/api';
 import { Id } from './_generated/dataModel';
+
+const requireAuth = async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject)).unique();
+    if (!user) throw new Error("User not found.");
+    return user;
+};
 
 export const saveCustomerWithVehicles = mutation({
     args: {
@@ -23,6 +32,7 @@ export const saveCustomerWithVehicles = mutation({
         })),
     },
     handler: async (ctx, { customerId, customerData, vehiclesData }) => {
+        await requireAuth(ctx);
         let finalCustomerId: Id<'customers'>;
 
         if (customerId) {
@@ -59,6 +69,7 @@ export const saveCustomerWithVehicles = mutation({
 export const remove = mutation({
     args: { id: v.id('customers') },
     handler: async (ctx, { id }) => {
+        await requireAuth(ctx);
         const customerDoc = await ctx.db.get(id);
         if (!customerDoc) return;
 

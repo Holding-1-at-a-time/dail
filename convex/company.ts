@@ -1,7 +1,6 @@
 
-
 import { v } from 'convex/values';
-import { mutation, action, query, internalMutation } from './_generated/server';
+import { mutation, action, query, internalMutation, ActionCtx } from './_generated/server';
 import { api, internal } from './_generated/api';
 import { Id } from './_generated/dataModel';
 import Stripe from 'stripe';
@@ -9,6 +8,23 @@ import Stripe from 'stripe';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
     apiVersion: '2024-06-20' as Stripe.StripeConfig['apiVersion'],
 });
+
+const requireAdmin = async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject)).unique();
+    if (!user || user.role !== 'admin') throw new Error("Not authorized");
+    return user;
+};
+
+const requireAdminAction = async (ctx: ActionCtx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const user = await ctx.runQuery(internal.users.getByIdentity);
+    if (!user || user.role !== 'admin') throw new Error("Not authorized");
+    return user;
+};
+
 
 export const get = query({
     handler: async (ctx) => {
@@ -37,6 +53,7 @@ export const save = mutation({
         enableEmailReminders: v.optional(v.boolean()),
     },
     handler: async (ctx, { id, ...rest }) => {
+        await requireAdmin(ctx);
         await ctx.db.patch(id, rest);
         
         await ctx.runMutation(internal.auditLog.record, {
@@ -52,6 +69,7 @@ export const save = mutation({
 export const setLogo = mutation({
     args: { storageId: v.id('_storage') },
     handler: async (ctx, { storageId }) => {
+        await requireAdmin(ctx);
         const company = await ctx.db.query('company').first();
         if (!company) {
             throw new Error("Company profile not found.");
@@ -62,6 +80,7 @@ export const setLogo = mutation({
 
 export const createStripeConnectAccount = action({
     handler: async (ctx) => {
+        await requireAdminAction(ctx);
         const company = await ctx.runQuery(api.company.get);
         if (!company) throw new Error("Company profile not found.");
 
@@ -93,6 +112,7 @@ export const createStripeConnectAccount = action({
 
 export const createStripeDashboardLink = action({
     handler: async (ctx) => {
+        await requireAdminAction(ctx);
         const company = await ctx.runQuery(api.company.get);
         if (!company?.stripeAccountId || company.stripeConnectStatus !== 'complete') {
             throw new Error("Stripe account not fully connected.");

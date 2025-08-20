@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { useQuery, useAction, useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
@@ -142,16 +143,16 @@ const BookingPage: React.FC = () => {
                     <div>
                          <h2 className="text-2xl font-bold text-white mb-4">Your Information</h2>
                          <div className="space-y-4">
-                            <div><label className="text-sm text-gray-400">Full Name</label><input type="text" name="name" value={customerInfo.name} onChange={(e) => handleInfoChange(e, 'customer')} className="w-full bg-gray-700 p-2 rounded mt-1" /></div>
-                            <div><label className="text-sm text-gray-400">Email</label><input type="email" name="email" value={customerInfo.email} onChange={(e) => handleInfoChange(e, 'customer')} className="w-full bg-gray-700 p-2 rounded mt-1" /></div>
-                            <div><label className="text-sm text-gray-400">Phone</label><input type="tel" name="phone" value={customerInfo.phone} onChange={(e) => handleInfoChange(e, 'customer')} className="w-full bg-gray-700 p-2 rounded mt-1" /></div>
+                            <div><label className="text-sm text-gray-400">Full Name</label><input type="text" name="name" value={customerInfo.name} onChange={(e) => handleInfoChange(e, 'customer')} className="w-full bg-gray-700 p-2 rounded mt-1" required /></div>
+                            <div><label className="text-sm text-gray-400">Email</label><input type="email" name="email" value={customerInfo.email} onChange={(e) => handleInfoChange(e, 'customer')} className="w-full bg-gray-700 p-2 rounded mt-1" required /></div>
+                            <div><label className="text-sm text-gray-400">Phone</label><input type="tel" name="phone" value={customerInfo.phone} onChange={(e) => handleInfoChange(e, 'customer')} className="w-full bg-gray-700 p-2 rounded mt-1" required /></div>
                          </div>
                          <h2 className="text-xl font-bold text-white mt-8 mb-4">Vehicle Information</h2>
                          <div className="grid grid-cols-2 gap-4">
-                            <div><label className="text-sm text-gray-400">Make</label><input type="text" name="make" value={vehicleInfo.make} onChange={(e) => handleInfoChange(e, 'vehicle')} className="w-full bg-gray-700 p-2 rounded mt-1" /></div>
-                            <div><label className="text-sm text-gray-400">Model</label><input type="text" name="model" value={vehicleInfo.model} onChange={(e) => handleInfoChange(e, 'vehicle')} className="w-full bg-gray-700 p-2 rounded mt-1" /></div>
-                            <div><label className="text-sm text-gray-400">Year</label><input type="number" name="year" value={vehicleInfo.year} onChange={(e) => handleInfoChange(e, 'vehicle')} className="w-full bg-gray-700 p-2 rounded mt-1" /></div>
-                            <div><label className="text-sm text-gray-400">Color</label><input type="text" name="color" value={vehicleInfo.color} onChange={(e) => handleInfoChange(e, 'vehicle')} className="w-full bg-gray-700 p-2 rounded mt-1" /></div>
+                            <div><label className="text-sm text-gray-400">Make</label><input type="text" name="make" value={vehicleInfo.make} onChange={(e) => handleInfoChange(e, 'vehicle')} className="w-full bg-gray-700 p-2 rounded mt-1" required /></div>
+                            <div><label className="text-sm text-gray-400">Model</label><input type="text" name="model" value={vehicleInfo.model} onChange={(e) => handleInfoChange(e, 'vehicle')} className="w-full bg-gray-700 p-2 rounded mt-1" required /></div>
+                            <div><label className="text-sm text-gray-400">Year</label><input type="number" name="year" value={vehicleInfo.year} onChange={(e) => handleInfoChange(e, 'vehicle')} className="w-full bg-gray-700 p-2 rounded mt-1" required /></div>
+                            <div><label className="text-sm text-gray-400">Color</label><input type="text" name="color" value={vehicleInfo.color} onChange={(e) => handleInfoChange(e, 'vehicle')} className="w-full bg-gray-700 p-2 rounded mt-1" required /></div>
                          </div>
                     </div>
                 );

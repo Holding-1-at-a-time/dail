@@ -1,5 +1,4 @@
 
-
 import { v } from 'convex/values';
 import { internalMutation, mutation, query, ActionCtx, action } from './_generated/server';
 import { Id } from './_generated/dataModel';
@@ -25,6 +24,15 @@ const getUserId = async (ctx: ActionCtx) => {
     if (!user) throw new Error("User not found");
     return user.clerkId;
 };
+
+const requireAuth = async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject)).unique();
+    if (!user) throw new Error("User not found.");
+    return user;
+};
+
 
 // --- Queries ---
 
@@ -223,6 +231,7 @@ export const save = mutation({
         })),
     },
     handler: async (ctx, { id, ...data }) => {
+        await requireAuth(ctx);
         let jobId: Id<"jobs">;
         const oldDoc = id ? await ctx.db.get(id) : null;
 
@@ -285,6 +294,7 @@ export const createDraft = mutation({
         vehicleId: v.id('vehicles'),
     },
     handler: async (ctx, args) => {
+        await requireAuth(ctx);
         const jobId = await ctx.db.insert('jobs', {
             ...args,
             status: 'estimate',
@@ -334,6 +344,7 @@ export const initiateVisualQuote = mutation({
 export const remove = mutation({
     args: { id: v.id('jobs') },
     handler: async (ctx, { id }) => {
+        await requireAuth(ctx);
         const oldDoc = await ctx.db.get(id);
         if (!oldDoc) return;
 
@@ -346,6 +357,7 @@ export const remove = mutation({
 export const convertToWorkOrder = mutation({
     args: { id: v.id('jobs') },
     handler: async (ctx, { id }) => {
+        await requireAuth(ctx);
         const oldDoc = await ctx.db.get(id);
         if (!oldDoc) return;
         await ctx.db.patch(id, { status: 'workOrder', workOrderDate: Date.now() });
@@ -360,6 +372,7 @@ export const convertToWorkOrder = mutation({
 export const generateInvoice = mutation({
     args: { id: v.id('jobs') },
     handler: async (ctx, { id }) => {
+        await requireAuth(ctx);
         const oldDoc = await ctx.db.get(id);
         if (!oldDoc) return;
         await ctx.db.patch(id, { status: 'invoice', invoiceDate: Date.now() });
@@ -422,6 +435,7 @@ export const updateReportingAggregates = internalMutation({
 export const updateChecklistProgress = mutation({
     args: { jobItemId: v.string(), completedTasks: v.array(v.string()) },
     handler: async (ctx, { jobItemId, completedTasks }) => {
+        await requireAuth(ctx);
         const jobs = await ctx.db.query('jobs').collect();
         for (const job of jobs) {
             const itemIndex = job.jobItems.findIndex(i => i.id === jobItemId);
@@ -438,6 +452,7 @@ export const updateChecklistProgress = mutation({
 export const addPhoto = mutation({
     args: { jobId: v.id('jobs'), storageId: v.id('_storage'), type: v.union(v.literal('before'), v.literal('after')) },
     handler: async (ctx, { jobId, storageId, type }) => {
+        await requireAuth(ctx);
         const job = await ctx.db.get(jobId);
         if (!job) throw new Error("Job not found");
         const newPhoto = { id: `photo_${Date.now()}`, storageId, type, timestamp: Date.now() };
@@ -448,6 +463,7 @@ export const addPhoto = mutation({
 export const approveJob = mutation({
     args: { jobId: v.id('jobs'), signatureStorageId: v.id('_storage') },
     handler: async (ctx, { jobId, signatureStorageId }) => {
+        await requireAuth(ctx);
         await ctx.db.patch(jobId, {
             customerApprovalStatus: 'approved',
             customerSignatureStorageId: signatureStorageId,
@@ -459,6 +475,7 @@ export const approveJob = mutation({
 export const startJob = mutation({
     args: { jobId: v.id('jobs') },
     handler: async (ctx, { jobId }) => {
+        await requireAuth(ctx);
         await ctx.db.patch(jobId, { actualStartTime: Date.now(), status: 'workOrder' });
     }
 });
@@ -466,6 +483,7 @@ export const startJob = mutation({
 export const completeJob = mutation({
     args: { jobId: v.id('jobs') },
     handler: async (ctx, { jobId }) => {
+        await requireAuth(ctx);
         await ctx.db.patch(jobId, { actualEndTime: Date.now(), status: 'invoice' });
         // Trigger inventory debit
         const company = await ctx.db.query('company').first();

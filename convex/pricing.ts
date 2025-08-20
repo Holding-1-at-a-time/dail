@@ -1,6 +1,15 @@
+
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { internal } from './_generated/api';
+
+const requireAdmin = async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject)).unique();
+    if (!user || user.role !== 'admin') throw new Error("Not authorized");
+    return user;
+};
 
 // --- Pricing Matrices ---
 
@@ -16,6 +25,7 @@ export const createMatrix = mutation({
         })),
     },
     handler: async (ctx, args) => {
+        await requireAdmin(ctx);
         return await ctx.db.insert('pricingMatrices', args);
     }
 });
@@ -33,6 +43,7 @@ export const updateMatrix = mutation({
         })),
     },
     handler: async (ctx, { id, ...rest }) => {
+        await requireAdmin(ctx);
         return await ctx.db.patch(id, rest);
     }
 });
@@ -40,6 +51,7 @@ export const updateMatrix = mutation({
 export const deleteMatrix = mutation({
     args: { id: v.id('pricingMatrices') },
     handler: async (ctx, { id }) => {
+        await requireAdmin(ctx);
         const matrix = await ctx.db.get(id);
         if (!matrix) return;
 
@@ -65,6 +77,7 @@ export const createUpcharge = mutation({
         isPercentage: v.boolean(),
     },
     handler: async (ctx, args) => {
+        await requireAdmin(ctx);
         return await ctx.db.insert('upcharges', args);
     }
 });
@@ -78,6 +91,7 @@ export const updateUpcharge = mutation({
         isPercentage: v.boolean(),
     },
     handler: async (ctx, { id, ...rest }) => {
+        await requireAdmin(ctx);
         return await ctx.db.patch(id, rest);
     }
 });
@@ -85,6 +99,7 @@ export const updateUpcharge = mutation({
 export const deleteUpcharge = mutation({
     args: { id: v.id('upcharges') },
     handler: async (ctx, { id }) => {
+        await requireAdmin(ctx);
         const upcharge = await ctx.db.get(id);
         if (!upcharge) return;
         
