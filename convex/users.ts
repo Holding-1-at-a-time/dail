@@ -136,7 +136,7 @@ export const getDashboardData = query({
         }
     });
 
-    const completedJobIds = completedJobsLastMonth.page.map((item: Doc<'jobs'>) => item._id);
+    const completedJobIds = completedJobsLastMonth.page.map((item: any) => item._id);
     const nullableJobDocs: (Doc<"jobs"> | null)[] = await Promise.all(
       completedJobIds.map(id => ctx.db.get(id))
     );

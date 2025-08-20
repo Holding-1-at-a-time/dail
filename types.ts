@@ -30,6 +30,7 @@ export type Company = Doc<"company"> & {
     enableEmailReminders?: boolean;
     brandColor?: string;
     logoStorageId?: Id<'_storage'>;
+    stripeConnectStatus?: 'none' | 'in_progress' | 'complete' | 'needs_attention';
 };
 export type Supplier = Doc<"suppliers"> & {
     estimatedLeadTimeDays?: number;

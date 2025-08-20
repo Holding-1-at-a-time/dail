@@ -1,20 +1,27 @@
 import { v } from 'convex/values';
-import { internalMutation, mutation, query, MutationCtx } from './_generated/server';
+import { internalMutation, mutation, query, ActionCtx, action } from './_generated/server';
 import { Id } from './_generated/dataModel';
 import { customAlphabet } from 'nanoid';
 import { api, internal } from './_generated/api';
 import { jobStats, servicePerformanceAggregate, technicianPerformanceAggregate } from './aggregates';
 import { rateLimiter } from './rateLimiter';
 import { defaultPriorityWorkflowManager } from './workflows';
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: '2024-06-20',
+});
 
 const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
 
-const getUserId = async (ctx: MutationCtx) => {
+const getUserId = async (ctx: ActionCtx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
         throw new Error("Not authenticated");
     }
-    return identity.subject;
+    const user = await ctx.runQuery(api.users.getByIdentity);
+    if (!user) throw new Error("User not found");
+    return user.clerkId;
 };
 
 // --- Queries ---
@@ -107,8 +114,93 @@ export const getDataForCustomerPortal = query({
     }
 });
 
-// --- Mutations ---
+// --- Mutations & Actions ---
 
+export const createPaymentIntent = action({
+    args: {
+        jobId: v.id('jobs'),
+        amount: v.number(), // in cents
+    },
+    handler: async (ctx, { jobId, amount }) => {
+        const company = await ctx.runQuery(api.company.get);
+        if (!company?.stripeAccountId) {
+            throw new Error("The business has not set up their payments account.");
+        }
+        
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount,
+            currency: 'usd',
+            automatic_payment_methods: { enabled: true },
+            application_fee_amount: Math.round(amount * 0.05), // 5% application fee
+            transfer_data: {
+                destination: company.stripeAccountId,
+            },
+            metadata: {
+                jobId: jobId,
+            },
+        });
+
+        return paymentIntent.client_secret;
+    },
+});
+
+export const internalSavePayment = internalMutation({
+    args: {
+        jobId: v.id('jobs'),
+        payment: v.object({ 
+            amount: v.number(), // in cents
+            paymentDate: v.number(), 
+            method: v.union(v.literal('Cash'), v.literal('Credit Card'), v.literal('Check'), v.literal('Bank Transfer'), v.literal('Other')), 
+            notes: v.optional(v.string()) 
+        })
+    },
+    handler: async (ctx, { jobId, payment }) => {
+        const oldJob = await ctx.db.get(jobId);
+        if (!oldJob) throw new Error("Job not found");
+        
+        const amountInDollars = payment.amount / 100;
+        const newPayment = { ...payment, amount: amountInDollars, id: `pay_${Date.now()}`};
+        const payments = [...(oldJob.payments || []), newPayment];
+        const paymentReceived = payments.reduce((sum, p) => sum + p.amount, 0);
+        
+        let paymentStatus: 'unpaid' | 'partial' | 'paid' = 'partial';
+        if (paymentReceived >= oldJob.totalAmount) paymentStatus = 'paid';
+        if (paymentReceived <= 0) paymentStatus = 'unpaid';
+
+        let status = oldJob.status;
+        let completionDate = oldJob.completionDate;
+        if (paymentStatus === 'paid' && status !== 'completed') {
+            status = 'completed';
+            completionDate = Date.now();
+        }
+
+        await ctx.db.patch(jobId, { payments, paymentReceived, paymentStatus, status, completionDate });
+        
+        await ctx.runMutation(internal.auditLog.record, {
+            action: "record_payment",
+            details: {
+                targetId: jobId,
+                targetName: `Job #${jobId.slice(-6)}`,
+                extra: { amount: payment.amount, method: payment.method }
+            }
+        });
+
+        const newDoc = await ctx.db.get(jobId);
+        if (newDoc) {
+            await jobStats.replace(ctx, oldJob, newDoc);
+            await ctx.runMutation(internal.jobs.updateReportingAggregates, { oldJob, newJob: newDoc });
+        }
+        
+        if (newDoc?.status === 'completed' && !newDoc.inventoryDebited) {
+            const company = await ctx.db.query('company').first();
+            if (company?.enableSmartInventory) {
+                await ctx.scheduler.runAfter(0, internal.inventory.debitInventoryForJob, { jobId });
+            }
+        }
+    }
+});
+
+// The rest of the file remains the same...
 export const save = mutation({
     args: {
         id: v.optional(v.id('jobs')),
@@ -271,61 +363,6 @@ export const generateInvoice = mutation({
             await ctx.runMutation(internal.jobs.updateReportingAggregates, { oldJob: oldDoc, newJob: newDoc });
         }
     },
-});
-
-export const savePayment = mutation({
-    args: {
-        jobId: v.id('jobs'),
-        payment: v.object({ 
-            amount: v.number(), 
-            paymentDate: v.number(), 
-            method: v.union(v.literal('Cash'), v.literal('Credit Card'), v.literal('Check'), v.literal('Bank Transfer'), v.literal('Other')), 
-            notes: v.optional(v.string()) 
-        })
-    },
-    handler: async (ctx, { jobId, payment }) => {
-        const oldJob = await ctx.db.get(jobId);
-        if (!oldJob) throw new Error("Job not found");
-        
-        const newPayment = { ...payment, id: `pay_${Date.now()}`};
-        const payments = [...(oldJob.payments || []), newPayment];
-        const paymentReceived = payments.reduce((sum, p) => sum + p.amount, 0);
-        
-        let paymentStatus: 'unpaid' | 'partial' | 'paid' = 'partial';
-        if (paymentReceived >= oldJob.totalAmount) paymentStatus = 'paid';
-        if (paymentReceived <= 0) paymentStatus = 'unpaid';
-
-        let status = oldJob.status;
-        let completionDate = oldJob.completionDate;
-        if (paymentStatus === 'paid' && status !== 'completed') {
-            status = 'completed';
-            completionDate = Date.now();
-        }
-
-        await ctx.db.patch(jobId, { payments, paymentReceived, paymentStatus, status, completionDate });
-        
-        await ctx.runMutation(internal.auditLog.record, {
-            action: "record_payment",
-            details: {
-                targetId: jobId,
-                targetName: `Job #${jobId.slice(-6)}`,
-                extra: { amount: payment.amount, method: payment.method }
-            }
-        });
-
-        const newDoc = await ctx.db.get(jobId);
-        if (newDoc) {
-            await jobStats.replace(ctx, oldJob, newDoc);
-            await ctx.runMutation(internal.jobs.updateReportingAggregates, { oldJob, newJob: newDoc });
-        }
-        
-        if (newDoc?.status === 'completed' && !newDoc.inventoryDebited) {
-            const company = await ctx.db.query('company').first();
-            if (company?.enableSmartInventory) {
-                await ctx.scheduler.runAfter(0, internal.inventory.debitInventoryForJob, { jobId });
-            }
-        }
-    }
 });
 
 export const updateReportingAggregates = internalMutation({

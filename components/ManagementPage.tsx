@@ -313,7 +313,10 @@ const ManagementPage: React.FC = () => {
     const handleDeleteJob = (id: Id<'jobs'>) => window.confirm('Are you sure?') && deleteJob({ id });
     const handleDeleteSupplier = (id: Id<'suppliers'>) => {
         if (window.confirm('Are you sure?')) {
-            deleteSupplier({ id }).catch((err: unknown) => alert(String((err as any)?.data) || "An unexpected error occurred."));
+            deleteSupplier({ id }).catch((err: any) => {
+                const errorMessage = err?.data;
+                alert(errorMessage || "An unexpected error occurred.");
+            });
         }
     };
 

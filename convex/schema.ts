@@ -14,7 +14,8 @@ export default defineSchema({
     logoStorageId: v.optional(v.id('_storage')),
     brandColor: v.optional(v.string()),
     defaultLaborRate: v.number(),
-    stripeConnectAccountId: v.optional(v.string()),
+    stripeAccountId: v.optional(v.string()),
+    stripeConnectStatus: v.optional(v.union(v.literal('none'), v.literal('in_progress'), v.literal('complete'), v.literal('needs_attention'))),
     enableSmartInventory: v.optional(v.boolean()),
     businessHours: v.optional(v.object({
         monday: v.optional(v.object({ start: v.string(), end: v.string(), enabled: v.boolean() })),

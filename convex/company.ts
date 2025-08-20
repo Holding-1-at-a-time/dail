@@ -1,8 +1,12 @@
-
 import { v } from 'convex/values';
-import { mutation, action, query } from './_generated/server';
-import { internal } from './_generated/api';
+import { mutation, action, query, internalMutation } from './_generated/server';
+import { api, internal } from './_generated/api';
 import { Id } from './_generated/dataModel';
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: '2024-06-20',
+});
 
 export const get = query({
     handler: async (ctx) => {
@@ -54,18 +58,53 @@ export const setLogo = mutation({
     },
 });
 
-export const createStripeAccountSession = action({
+export const createStripeConnectAccount = action({
     handler: async (ctx) => {
-        // This is a placeholder for a real Stripe integration.
-        // In a real application, you would use the Stripe Node.js library here
-        // to create an account and an account session, then return the client_secret.
-        // You would need to set STRIPE_SECRET_KEY in your Convex environment variables.
-        console.log("Attempting to create Stripe account session (simulation).");
-        // const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-        // ... Stripe API calls ...
+        const company = await ctx.runQuery(api.company.get);
+        if (!company) throw new Error("Company profile not found.");
+
+        let accountId = company.stripeAccountId;
+
+        if (!accountId) {
+            const account = await stripe.accounts.create({
+                type: 'express',
+                business_type: 'individual', // Can be customized further
+            });
+            accountId = account.id;
+            await ctx.runMutation(internal.company.setStripeAccountId, { 
+                companyId: company._id, 
+                stripeAccountId: accountId 
+            });
+        }
         
-        // Because we don't have real keys, this will fail on the client,
-        // which is the expected behavior outlined in the UI component.
-        throw new Error("Stripe backend not fully implemented. This is a simulation.");
+        const origin = new URL(process.env.VITE_CONVEX_URL!).origin;
+        const accountLink = await stripe.accountLinks.create({
+            account: accountId,
+            refresh_url: `${origin}/settings`,
+            return_url: `${origin}/settings?stripe_onboarding_complete=true`,
+            type: 'account_onboarding',
+        });
+
+        return accountLink.url;
+    }
+});
+
+export const createStripeDashboardLink = action({
+    handler: async (ctx) => {
+        const company = await ctx.runQuery(api.company.get);
+        if (!company?.stripeAccountId) throw new Error("Stripe account not connected.");
+
+        const loginLink = await stripe.accounts.createLoginLink(company.stripeAccountId);
+        return loginLink.url;
+    }
+});
+
+export const setStripeAccountId = internalMutation({
+    args: { companyId: v.id('company'), stripeAccountId: v.string() },
+    handler: async (ctx, { companyId, stripeAccountId }) => {
+        await ctx.db.patch(companyId, { 
+            stripeAccountId,
+            stripeConnectStatus: 'in_progress',
+        });
     }
 });

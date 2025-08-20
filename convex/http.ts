@@ -29,6 +29,25 @@ const handleClerkWebhook = httpAction(async (ctx, request) => {
   return new Response(null, { status: 200 });
 });
 
+const handleStripeWebhook = httpAction(async (ctx, request) => {
+    try {
+        const signature = request.headers.get("stripe-signature") as string;
+        const result = await ctx.runAction(internal.stripe.handleWebhook, {
+            signature,
+            payload: await request.text(),
+        });
+
+        if (result.success) {
+            return new Response(null, { status: 200 });
+        } else {
+            return new Response("Webhook Error", { status: 400 });
+        }
+    } catch (err) {
+        console.error(err);
+        return new Response("Webhook Error", { status: 400 });
+    }
+});
+
 const handleUploadKnowledgeFile = httpAction(async (ctx, request) => {
     // Check if the user is an admin.
     const identity = await ctx.auth.getUserIdentity();
@@ -63,6 +82,12 @@ http.route({
   path: "/clerk-webhook",
   method: "POST",
   handler: handleClerkWebhook,
+});
+
+http.route({
+  path: "/stripe-webhook",
+  method: "POST",
+  handler: handleStripeWebhook,
 });
 
 // Using CORS router wrapper for the new endpoint

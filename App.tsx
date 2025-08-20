@@ -14,7 +14,6 @@ import ReportsPage from './components/ReportsPage';
 import InventoryPage from './components/InventoryPage';
 import MarketingPage from './components/MarketingPage';
 import CustomerPortalPage from './components/CustomerPortalPage';
-import StripeOnboarding from './components/StripeOnboarding';
 import LandingPage from './components/LandingPage';
 import KnowledgeBasePage from './components/KnowledgeBasePage';
 import AssistantPage from './components/AssistantPage';

@@ -9,6 +9,64 @@ interface SettingsPageProps {
     setActivePage: (page: Page) => void;
 }
 
+const StripeConnectManager: React.FC<{ company: Company | null | undefined }> = ({ company }) => {
+    const createStripeAccount = useAction(api.company.createStripeConnectAccount);
+    const createDashboardLink = useAction(api.company.createStripeDashboardLink);
+    const [isConnecting, setIsConnecting] = useState(false);
+    
+    const handleConnect = async () => {
+        setIsConnecting(true);
+        try {
+            const url = await createStripeAccount();
+            if (url) window.location.href = url;
+        } catch (error) {
+            console.error(error);
+            alert("Failed to start Stripe connection.");
+        } finally {
+            setIsConnecting(false);
+        }
+    };
+    
+    const handleDashboard = async () => {
+        setIsConnecting(true);
+         try {
+            const url = await createDashboardLink();
+            if (url) window.open(url, '_blank');
+        } catch (error) {
+            console.error(error);
+            alert("Failed to get dashboard link.");
+        } finally {
+            setIsConnecting(false);
+        }
+    }
+    
+    const getStatusContent = () => {
+        switch (company?.stripeConnectStatus) {
+            case 'complete':
+                return { text: "Payments Active", color: "text-green-400", button: <button type="button" onClick={handleDashboard} disabled={isConnecting} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">{isConnecting ? '...' : 'Manage on Stripe'}</button> };
+            case 'in_progress':
+                return { text: "Onboarding In Progress...", color: "text-yellow-400", button: <a href="#" onClick={handleConnect} className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg">Continue Onboarding</a> };
+            case 'needs_attention':
+                 return { text: "Action Required", color: "text-red-400", button: <button type="button" onClick={handleDashboard} disabled={isConnecting} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">{isConnecting ? '...' : 'Update Details on Stripe'}</button> };
+            default:
+                return { text: "Not Connected", color: "text-gray-400", button: <button type="button" onClick={handleConnect} disabled={isConnecting} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">{isConnecting ? 'Connecting...' : 'Connect with Stripe'}</button> };
+        }
+    };
+    
+    const { text, color, button } = getStatusContent();
+
+    return (
+        <div className="bg-gray-700/50 p-6 rounded-lg flex items-center justify-between">
+            <div>
+                <h3 className="text-lg font-semibold text-white flex items-center"><StripeIcon className="w-16 mr-4 text-white"/> Payments Powered by Stripe</h3>
+                <p className="text-sm text-gray-300 mt-1">Securely accept online payments and manage your payouts.</p>
+                <p className={`text-sm font-bold mt-2 ${color}`}>{text}</p>
+            </div>
+            {button}
+        </div>
+    );
+};
+
 const BusinessHoursEditor: React.FC<{
     hours: Company['businessHours'];
     onChange: (day: string, field: 'start' | 'end' | 'enabled', value: string | boolean) => void;
@@ -157,6 +215,13 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ setActivePage }) => {
                       </div>
                   </section>
                 )}
+
+                 <section id="billing-payments" className="mb-12">
+                     <div className="bg-gray-800 rounded-lg shadow-lg p-6">
+                         <h2 className="text-xl font-bold text-white flex items-center mb-6">Billing & Payments</h2>
+                         <StripeConnectManager company={company} />
+                     </div>
+                </section>
 
                 <section id="communications" className="mb-12">
                      <div className="bg-gray-800 rounded-lg shadow-lg p-6">
