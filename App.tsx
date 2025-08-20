@@ -19,6 +19,7 @@ import KnowledgeBasePage from './components/KnowledgeBasePage';
 import AssistantPage from './components/AssistantPage';
 import { Page } from './types';
 import BookingPage from './components/BookingPage';
+import DevEnvWarning from './components/DevEnvWarning';
 
 function App() {
   const [activePage, setActivePage] = useState<Page>('dashboard');
@@ -139,6 +140,7 @@ function App() {
 
   return (
     <>
+      <DevEnvWarning />
       <SignedOut>
         <LandingPage />
       </SignedOut>

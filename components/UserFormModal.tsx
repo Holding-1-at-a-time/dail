@@ -4,6 +4,7 @@ import { useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
 import { User } from '../types';
 import Modal from './Modal';
+import { useToasts } from './ToastProvider';
 
 interface UserFormModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ const UserFormModal: React.FC<UserFormModalProps> = ({ isOpen, onClose, userToEd
     role: 'technician',
   });
 
+  const { addToast } = useToasts();
   const createUser = useMutation(api.users.create);
   const updateUser = useMutation(api.users.update);
 
@@ -49,7 +51,7 @@ const UserFormModal: React.FC<UserFormModalProps> = ({ isOpen, onClose, userToEd
       // Note: A real implementation would invite the user via Clerk,
       // and a webhook would create the user record in Convex.
       // This is a simplified admin-only creation for demo purposes.
-      alert("In a real app, you would invite this user via email, and they would sign up through Clerk.");
+      addToast("This is a demo. In a real app, an invitation email would be sent to the user to sign up.", 'info');
       // await createUser(formData);
     }
     onClose();

@@ -4,6 +4,7 @@ import { useQuery, useAction, useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
 import { Service } from '../types';
 import { CarIcon, CheckCircleIcon } from './icons';
+import { useToasts } from './ToastProvider';
 
 type BookingStep = 'services' | 'schedule' | 'details' | 'confirm' | 'complete';
 
@@ -17,6 +18,7 @@ const BookingPage: React.FC = () => {
     const [isLoadingSlots, setIsLoadingSlots] = useState(false);
     const [isBooking, setIsBooking] = useState(false);
 
+    const { addToast } = useToasts();
     const services = useQuery(api.booking.getPublicServices);
     const getAvailableSlots = useAction(api.booking.getAvailableSlots);
     const createBooking = useMutation(api.booking.createBooking);
@@ -47,7 +49,7 @@ const BookingPage: React.FC = () => {
             setAvailableSlots(slots);
         } catch (error) {
             console.error(error);
-            alert('Failed to load available slots. Please try another date.');
+            addToast('Failed to load available slots. Please try another date.', 'error');
         } finally {
             setIsLoadingSlots(false);
         }
@@ -78,9 +80,9 @@ const BookingPage: React.FC = () => {
         } catch (error: any) {
             console.error("Booking submission error:", error);
             if (error?.data?.kind === 'RateLimitError') {
-                alert('Too many booking attempts have been made recently. Please wait a while before trying again.');
+                addToast('Too many booking attempts have been made recently. Please wait a while before trying again.', 'error');
             } else {
-                alert('There was an error creating your booking. Please try again.');
+                addToast('There was an error creating your booking. Please try again.', 'error');
             }
         } finally {
             setIsBooking(false);

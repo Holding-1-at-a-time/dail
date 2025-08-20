@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '../convex/_generated/api';
@@ -5,6 +6,7 @@ import { Id } from '../convex/_generated/dataModel';
 import { Appointment, Job } from '../types';
 import Modal from './Modal';
 import { SparklesIcon } from './icons';
+import { useToasts } from './ToastProvider';
 
 interface AppointmentFormModalProps {
   isOpen: boolean;
@@ -29,6 +31,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ isOpen, onC
   const [suggestedSlots, setSuggestedSlots] = useState<{startTime: string, endTime: string}[]>([]);
   const [isSuggesting, setIsSuggesting] = useState(false);
 
+  const { addToast } = useToasts();
   const data = useQuery(api.appointments.getDataForForm);
   const saveAppointment = useMutation(api.appointments.save);
   const suggestSlotsAction = useAction(api.ai.suggestAppointmentSlots);
@@ -56,7 +59,10 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ isOpen, onC
   }, [appointmentToEdit, jobToScheduleId, isOpen]);
 
   const handleSuggestSlots = async () => {
-    if (!jobId) return alert("Please select a job first.");
+    if (!jobId) {
+      addToast("Please select a job first.", 'error');
+      return;
+    }
     setIsSuggesting(true); setSuggestedSlots([]);
     try {
         const slots = await suggestSlotsAction({ jobId });
@@ -64,9 +70,9 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ isOpen, onC
     } catch (error: any) {
         console.error("Error suggesting slots:", error);
          if (error?.data?.kind === 'RateLimitError') {
-            alert("You've made too many AI requests. Please wait a moment before trying again.");
+            addToast("You've made too many AI requests. Please wait a moment before trying again.", 'error');
         } else {
-            alert("Failed to suggest time slots.");
+            addToast("Failed to suggest time slots.", 'error');
         }
     } finally {
         setIsSuggesting(false);
@@ -80,10 +86,16 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({ isOpen, onC
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!jobId || !startTime || !endTime) return alert("Please fill out all required fields.");
+    if (!jobId || !startTime || !endTime) {
+      addToast("Please fill out all required fields.", 'error');
+      return;
+    }
     const startTimestamp = new Date(startTime).getTime();
     const endTimestamp = new Date(endTime).getTime();
-    if (startTimestamp >= endTimestamp) return alert("End time must be after start time.");
+    if (startTimestamp >= endTimestamp) {
+      addToast("End time must be after start time.", 'error');
+      return;
+    }
     
     await saveAppointment({
         id: appointmentToEdit?._id,

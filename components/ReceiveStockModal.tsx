@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../convex/_generated/api';
@@ -6,6 +7,7 @@ import Modal from './Modal';
 import { Id } from '../convex/_generated/dataModel';
 import { BarcodeIcon, TrashIcon } from './icons';
 import BarcodeScannerModal from './BarcodeScannerModal';
+import { useToasts } from './ToastProvider';
 
 interface ReceiveStockModalProps {
   isOpen: boolean;
@@ -26,6 +28,7 @@ const ReceiveStockModal: React.FC<ReceiveStockModalProps> = ({ isOpen, onClose, 
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [manualAddProductId, setManualAddProductId] = useState<Id<'products'> | ''>('');
   
+  const { addToast } = useToasts();
   const receiveStock = useMutation(api.inventory.receiveMultipleStockItems);
   const productByBarcode = useQuery(api.inventory.getProductByBarcode, 'skip');
 
@@ -38,7 +41,7 @@ const ReceiveStockModal: React.FC<ReceiveStockModalProps> = ({ isOpen, onClose, 
 
   const handleAddItem = (product: Product) => {
     if (items.some(item => item.productId === product._id)) {
-        alert(`${product.name} is already in the list.`);
+        addToast(`${product.name} is already in the list.`, 'info');
         return;
     }
     setItems(prev => [...prev, {
@@ -68,13 +71,16 @@ const ReceiveStockModal: React.FC<ReceiveStockModalProps> = ({ isOpen, onClose, 
       if (product) {
           handleAddItem(product);
       } else {
-          alert(`No product found with barcode: ${decodedText}`);
+          addToast(`No product found with barcode: ${decodedText}`, 'error');
       }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (items.length === 0) return alert("Please add at least one product to receive.");
+    if (items.length === 0) {
+      addToast("Please add at least one product to receive.", 'error');
+      return;
+    }
     
     await receiveStock({ items: items.map(({ productName, ...rest }) => rest) });
     onClose();

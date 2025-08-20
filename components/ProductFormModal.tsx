@@ -5,6 +5,7 @@ import { api } from '../convex/_generated/api';
 import { Product, Supplier } from '../types';
 import Modal from './Modal';
 import { MagicIcon } from './icons';
+import { useToasts } from './ToastProvider';
 
 interface ProductFormModalProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onClose, pr
     barcode: '',
   });
 
+  const { addToast } = useToasts();
   const company = useQuery(api.company.get);
   const enableSmartInventory = company?.enableSmartInventory;
   const [isSuggesting, setIsSuggesting] = useState(false);
@@ -63,9 +65,9 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onClose, pr
     } catch (error: any) {
         console.error("Error suggesting details:", error);
         if (error?.data?.kind === 'RateLimitError') {
-            alert("You've made too many AI requests. Please wait a moment before trying again.");
+            addToast("You've made too many AI requests. Please wait a moment before trying again.", 'error');
         } else {
-            alert("AI suggestion failed.");
+            addToast("AI suggestion failed.", 'error');
         }
     } finally {
         setIsSuggesting(false);
@@ -74,7 +76,10 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onClose, pr
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.supplierId) return alert("Please select a supplier.");
+    if (!formData.supplierId) {
+      addToast("Please select a supplier.", 'error');
+      return;
+    }
     
     const dataToSave = { ...formData, barcode: formData.barcode?.trim() || undefined };
 
@@ -87,7 +92,7 @@ const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onClose, pr
         onClose();
     } catch (error: any) {
         console.error("Error saving product:", error);
-        alert(`Error: ${error.data || "Could not save product."}`);
+        addToast(`Error: ${error.data || "Could not save product."}`, 'error');
     }
   };
 

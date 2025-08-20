@@ -16,6 +16,7 @@ import SupplierFormModal from './SupplierFormModal';
 import SubscriptionFormModal from './SubscriptionFormModal';
 import SubscriptionCard from './SubscriptionCard';
 import EmptyState from './EmptyState';
+import { useToasts } from './ToastProvider';
 
 type ManagementTab = 'jobs' | 'customers' | 'services' | 'pricing' | 'upcharges' | 'checklists' | 'suppliers' | 'subscriptions';
 
@@ -255,6 +256,7 @@ const ManagementPage: React.FC = () => {
     const deleteSupplier = useMutation(api.suppliers.remove);
     const convertToWorkOrder = useMutation(api.jobs.convertToWorkOrder);
     const generateInvoice = useMutation(api.jobs.generateInvoice);
+    const { addToast } = useToasts();
     
     const [activeTab, setActiveTab] = useState<ManagementTab>('jobs');
 
@@ -299,9 +301,12 @@ const ManagementPage: React.FC = () => {
     const handleShareJobLink = (job: Job) => {
         if (job.publicLinkKey) {
             const url = `${window.location.origin}${window.location.pathname}?jobKey=${job.publicLinkKey}`;
-            navigator.clipboard.writeText(url).then(() => alert('Customer portal link copied!'), () => alert('Failed to copy link.'));
+            navigator.clipboard.writeText(url).then(
+                () => addToast('Customer portal link copied!', 'success'),
+                () => addToast('Failed to copy link.', 'error')
+            );
         } else {
-            alert('Could not find a shareable link for this job.');
+            addToast('Could not find a shareable link for this job.', 'error');
         }
     };
     
@@ -314,8 +319,8 @@ const ManagementPage: React.FC = () => {
     const handleDeleteSupplier = (id: Id<'suppliers'>) => {
         if (window.confirm('Are you sure?')) {
             deleteSupplier({ id }).catch((err: any) => {
-                const errorMessage = err.data ? String(err.data) : "An unexpected error occurred.";
-                alert(errorMessage);
+                const errorMessage = typeof err.data === 'string' ? err.data : (err.data?.message || "An unexpected error occurred.");
+                addToast(errorMessage, 'error');
             });
         }
     };

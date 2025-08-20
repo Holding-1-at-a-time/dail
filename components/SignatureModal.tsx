@@ -1,5 +1,7 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import Modal from './Modal';
+import { useToasts } from './ToastProvider';
 
 interface SignatureModalProps {
   isOpen: boolean;
@@ -10,6 +12,7 @@ interface SignatureModalProps {
 const SignatureModal: React.FC<SignatureModalProps> = ({ isOpen, onClose, onSave }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const { addToast } = useToasts();
 
   const getCanvasContext = () => {
     const canvas = canvasRef.current;
@@ -95,7 +98,7 @@ const SignatureModal: React.FC<SignatureModalProps> = ({ isOpen, onClose, onSave
         const isEmpty = !pixelBuffer.some(color => color !== 0);
         
         if (isEmpty) {
-            alert('Please provide a signature before saving.');
+            addToast('Please provide a signature before saving.', 'error');
             return;
         }
         

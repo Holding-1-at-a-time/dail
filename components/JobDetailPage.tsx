@@ -7,6 +7,7 @@ import { User, JobItem, Checklist } from '../types';
 import { CarIcon, UserCircleIcon, BriefcaseIcon, ChecklistIcon, CameraIcon, PencilAltIcon, DocumentDownloadIcon, ClipboardListIcon, ChatBubbleLeftRightIcon } from './icons';
 import SignatureModal from './SignatureModal';
 import jsPDF from 'jspdf';
+import { useToasts } from './ToastProvider';
 
 const InteractiveChecklist: React.FC<{ jobItemId: string; checklist: Checklist; disabled: boolean; onUpdate: (args: { jobItemId: string; completedTasks: string[] }) => void; }> = ({ jobItemId, checklist, disabled, onUpdate }) => {
     const jobItem = useQuery(api.jobs.getJobItem, { jobItemId });
@@ -49,6 +50,7 @@ const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId, currentUser, onBac
     const addPhoto = useMutation(api.jobs.addPhoto);
     const approveJob = useMutation(api.jobs.approve);
     const sendManualEmail = useAction(api.communication.sendManualEmail);
+    const { addToast } = useToasts();
     
     const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
     const [newMessage, setNewMessage] = useState('');
@@ -85,9 +87,10 @@ const JobDetailPage: React.FC<JobDetailPageProps> = ({ jobId, currentUser, onBac
         try {
             await sendManualEmail({ jobId: job._id, message: newMessage });
             setNewMessage('');
+            addToast("Message sent successfully!", 'success');
         } catch (error) {
             console.error("Failed to send message:", error);
-            alert("Error: Could not send message.");
+            addToast("Error: Could not send message.", 'error');
         } finally {
             setIsSending(false);
         }

@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
 import { Subscription, Customer, Service } from '../types';
 import Modal from './Modal';
 import { Id } from '../convex/_generated/dataModel';
+import { useToasts } from './ToastProvider';
 
 interface SubscriptionFormModalProps {
   isOpen: boolean;
@@ -22,6 +24,7 @@ const SubscriptionFormModal: React.FC<SubscriptionFormModalProps> = ({ isOpen, o
     startDate: new Date().toISOString().split('T')[0],
   });
   
+  const { addToast } = useToasts();
   const saveSubscription = useMutation(api.subscriptions.save);
 
   useEffect(() => {
@@ -61,7 +64,8 @@ const SubscriptionFormModal: React.FC<SubscriptionFormModalProps> = ({ isOpen, o
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.customerId || formData.serviceIds.length === 0 || formData.price <= 0) {
-        return alert("Please fill out all fields.");
+        addToast("Please fill out all fields: customer, services, and price.", 'error');
+        return;
     }
     await saveSubscription({
         id: subscriptionToEdit?._id,

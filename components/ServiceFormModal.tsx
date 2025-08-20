@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '../convex/_generated/api';
@@ -5,6 +6,7 @@ import { Id } from '../convex/_generated/dataModel';
 import { Service, Product } from '../types';
 import Modal from './Modal';
 import { MagicIcon, PlusIcon, TrashIcon, LightBulbIcon } from './icons';
+import { useToasts } from './ToastProvider';
 
 interface ServiceFormModalProps {
   isOpen: boolean;
@@ -25,6 +27,7 @@ const ServiceFormModal: React.FC<ServiceFormModalProps> = ({ isOpen, onClose, se
     productsUsed: [],
   });
   
+  const { addToast } = useToasts();
   const company = useQuery(api.company.get);
   const enableSmartInventory = company?.enableSmartInventory;
   const learnedSuggestions = useQuery(api.learning.getLearnedSuggestionsForService, serviceToEdit ? { serviceId: serviceToEdit._id } : "skip");
@@ -72,7 +75,10 @@ const ServiceFormModal: React.FC<ServiceFormModalProps> = ({ isOpen, onClose, se
   };
 
   const handleGenerateDescription = async () => {
-    if (!formData.name) return alert('Please enter a service name first.');
+    if (!formData.name) {
+      addToast('Please enter a service name first.', 'error');
+      return;
+    }
     setIsGenerating(true);
     try {
         const description = await generateDescriptionAction({ serviceName: formData.name });
@@ -80,9 +86,9 @@ const ServiceFormModal: React.FC<ServiceFormModalProps> = ({ isOpen, onClose, se
     } catch (error: any) {
         console.error("Error generating description:", error);
         if (error?.data?.kind === 'RateLimitError') {
-            alert("You've made too many AI requests. Please wait a moment before trying again.");
+            addToast("You've made too many AI requests. Please wait a moment before trying again.", 'error');
         } else {
-            alert("An error occurred while generating the description.");
+            addToast("An error occurred while generating the description.", 'error');
         }
     } finally {
         setIsGenerating(false);
@@ -98,7 +104,10 @@ const ServiceFormModal: React.FC<ServiceFormModalProps> = ({ isOpen, onClose, se
   };
 
   const addProductUsed = () => {
-    if (products.length === 0) return alert("Please add products in the Inventory page first.");
+    if (products.length === 0) {
+      addToast("Please add products in the Inventory page first.", 'info');
+      return;
+    }
     setFormData(prev => ({ ...prev, productsUsed: [...(prev.productsUsed || []), { productId: products[0]._id, quantity: 1 }] }));
   };
 
@@ -121,9 +130,9 @@ const ServiceFormModal: React.FC<ServiceFormModalProps> = ({ isOpen, onClose, se
     } catch (error: any) {
         console.error("Error suggesting products:", error);
         if (error?.data?.kind === 'RateLimitError') {
-            alert("You've made too many AI requests. Please wait a moment before trying again.");
+            addToast("You've made too many AI requests. Please wait a moment before trying again.", 'error');
         } else {
-            alert("An error occurred while suggesting products.");
+            addToast("An error occurred while suggesting products.", 'error');
         }
     } finally {
         setIsSuggestingProducts(false);

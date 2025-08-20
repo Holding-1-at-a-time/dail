@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '../convex/_generated/api';
@@ -6,6 +7,7 @@ import { Job, Customer, Vehicle, Service, PricingMatrix, Upcharge, JobItem, Pric
 import Modal from './Modal';
 import { PlusIcon, TrashIcon, SparklesIcon, ExclamationTriangleIcon } from './icons';
 import CustomerFormModal from './CustomerFormModal';
+import { useToasts } from './ToastProvider';
 
 interface JobFormModalProps {
   isOpen: boolean;
@@ -33,6 +35,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({ isOpen, onClose, jobToEdit 
   
   const [currentJobId, setCurrentJobId] = useState<Id<'jobs'> | null>(null);
   
+  const { addToast } = useToasts();
   const data = useQuery(api.jobs.getDataForForm);
   const currentJob = useQuery(api.jobs.get, currentJobId ? { id: currentJobId } : "skip");
 
@@ -188,7 +191,7 @@ const JobFormModal: React.FC<JobFormModalProps> = ({ isOpen, onClose, jobToEdit 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.customerId || !formData.vehicleId) {
-      alert("Please select a customer and vehicle.");
+      addToast("Please select a customer and vehicle.", 'error');
       return;
     }
     const finalJobData = {
@@ -208,9 +211,13 @@ const JobFormModal: React.FC<JobFormModalProps> = ({ isOpen, onClose, jobToEdit 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => e.target.files && setVisualQuoteFiles(Array.from(e.target.files));
 
   const handleVisualQuote = async () => {
-    if (visualQuoteFiles.length === 0) return alert("Please upload at least one photo.");
+    if (visualQuoteFiles.length === 0) {
+      addToast("Please upload at least one photo.", 'error');
+      return;
+    }
     if (!formData.customerId || !formData.vehicleId) {
-        return alert("Please select a customer and vehicle first.");
+        addToast("Please select a customer and vehicle first.", 'error');
+        return;
     }
     setIsUploading(true);
     try {
@@ -235,9 +242,9 @@ const JobFormModal: React.FC<JobFormModalProps> = ({ isOpen, onClose, jobToEdit 
     } catch (error: any) {
         console.error("Error with Visual Quoting:", error);
         if (error?.data?.kind === 'RateLimitError') {
-            alert("You have exceeded the limit for photo analysis. Please wait a moment before trying again.");
+            addToast("You have exceeded the limit for photo analysis. Please wait a moment before trying again.", 'error');
         } else {
-            alert("Failed to start photo analysis. Please check the console for details.");
+            addToast("Failed to start photo analysis. Please check the console for details.", 'error');
         }
     } finally {
         setIsUploading(false);

@@ -5,6 +5,7 @@ import { api } from '../convex/_generated/api';
 import { Checklist } from '../types';
 import Modal from './Modal';
 import { PlusIcon, TrashIcon } from './icons';
+import { useToasts } from './ToastProvider';
 
 interface ChecklistFormModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ const ChecklistFormModal: React.FC<ChecklistFormModalProps> = ({ isOpen, onClose
     tasks: [],
   });
 
+  const { addToast } = useToasts();
   const allServices = useQuery(api.services.getAll);
   const createChecklist = useMutation(api.checklists.create);
   const updateChecklist = useMutation(api.checklists.update);
@@ -63,7 +65,7 @@ const ChecklistFormModal: React.FC<ChecklistFormModalProps> = ({ isOpen, onClose
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.serviceId) {
-        alert('Please select a service for this checklist.');
+        addToast('Please select a service for this checklist.', 'error');
         return;
     }
     const finalTasks = formData.tasks.map(t => t.trim()).filter(t => t);

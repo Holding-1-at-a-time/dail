@@ -5,6 +5,7 @@ import { api } from '../convex/_generated/api';
 import { User, Company, Page, Snapshot } from '../types';
 import { PlusIcon, EditIcon, TrashIcon, UserCircleIcon, OfficeBuildingIcon, StripeIcon, LinkIcon, EnvelopeIcon, ShieldCheckIcon, ArchiveBoxIcon, PaintBrushIcon, CreditCardIcon } from './icons';
 import UserFormModal from './UserFormModal';
+import { useToasts } from './ToastProvider';
 
 interface SettingsPageProps {
     setActivePage?: (page: Page) => void;
@@ -14,6 +15,7 @@ const StripeConnectManager: React.FC<{ company: Company | null | undefined }> = 
     const createStripeAccount = useAction(api.company.createStripeConnectAccount);
     const createDashboardLink = useAction(api.company.createStripeDashboardLink);
     const [isConnecting, setIsConnecting] = useState(false);
+    const { addToast } = useToasts();
     
     const handleConnect = async () => {
         setIsConnecting(true);
@@ -22,7 +24,7 @@ const StripeConnectManager: React.FC<{ company: Company | null | undefined }> = 
             if (url) window.location.href = url;
         } catch (error) {
             console.error(error);
-            alert("Failed to start Stripe connection.");
+            addToast("Failed to start Stripe connection.", 'error');
         } finally {
             setIsConnecting(false);
         }
@@ -35,7 +37,7 @@ const StripeConnectManager: React.FC<{ company: Company | null | undefined }> = 
             if (url) window.open(url, '_blank');
         } catch (error) {
             console.error(error);
-            alert("Failed to get dashboard link.");
+            addToast("Failed to get dashboard link.", 'error');
         } finally {
             setIsConnecting(false);
         }
@@ -111,6 +113,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ setActivePage }) => {
     const createSnapshot = useAction(api.dataManagement.createSnapshot);
     const generateUploadUrl = useMutation(api.files.generateUploadUrl);
     const setLogo = useMutation(api.company.setLogo);
+    const { addToast } = useToasts();
 
     const [isUserModalOpen, setIsUserModalOpen] = useState(false);
     const [userToEdit, setUserToEdit] = useState<User | null>(null);
@@ -153,7 +156,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ setActivePage }) => {
         });
         const { storageId } = await result.json();
         await setLogo({ storageId });
-        alert("Logo uploaded successfully!");
+        addToast("Logo uploaded successfully!", 'success');
     };
 
     const handleHoursChange = (day: string, field: 'start' | 'end' | 'enabled', value: string | boolean) => {
@@ -179,7 +182,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ setActivePage }) => {
                 slotDurationMinutes: companyData.slotDurationMinutes,
                 brandColor: companyData.brandColor,
             });
-            alert('Settings saved!');
+            addToast('Settings saved successfully!', 'success');
         }
     };
 
@@ -188,10 +191,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ setActivePage }) => {
             setIsCreatingSnapshot(true);
             try {
                 await createSnapshot();
-                alert("Snapshot created successfully!");
+                addToast("Snapshot created successfully!", 'success');
             } catch (error) {
                 console.error(error);
-                alert("Failed to create snapshot.");
+                addToast("Failed to create snapshot.", 'error');
             } finally {
                 setIsCreatingSnapshot(false);
             }

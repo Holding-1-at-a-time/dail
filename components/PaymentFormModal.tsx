@@ -6,6 +6,7 @@ import { Job } from '../types';
 import Modal from './Modal';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { useToasts } from './ToastProvider';
 
 // It's recommended to load Stripe outside of a component's render to avoid
 // recreating the Stripe object on every render.
@@ -98,6 +99,7 @@ interface PaymentFormModalProps {
 const PaymentFormModal: React.FC<PaymentFormModalProps> = ({ isOpen, onClose, job }) => {
     const [clientSecret, setClientSecret] = useState<string | null>(null);
     const createPaymentIntent = useAction(api.jobs.createPaymentIntent);
+    const { addToast } = useToasts();
 
     useEffect(() => {
         if (job && isOpen) {
@@ -107,14 +109,14 @@ const PaymentFormModal: React.FC<PaymentFormModalProps> = ({ isOpen, onClose, jo
                     .then(secret => setClientSecret(secret))
                     .catch(err => {
                         console.error("Failed to create payment intent:", err);
-                        alert("Error: Could not initialize payment form. Please try again.");
+                        addToast("Error: Could not initialize payment form. Please try again.", 'error');
                         onClose();
                     });
             }
         } else {
             setClientSecret(null); // Reset when modal is closed or job is not present
         }
-    }, [job, isOpen, createPaymentIntent, onClose]);
+    }, [job, isOpen, createPaymentIntent, onClose, addToast]);
   
   if (!job || !isOpen) return null;
 
