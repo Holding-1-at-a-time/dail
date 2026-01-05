@@ -18,7 +18,7 @@
     "@fullcalendar/interaction": "6.1.11",
     "@google/genai": "latest",
     "@clerk/clerk-react": "5",
-    "jspdf": "2.5.1",
+    "jspdf": "4.0.0",
     "chart.js": "4.4.3",
     "react-chartjs-2": "5.2.0",
     "@stripe/react-connect-js": "1.0.0",
